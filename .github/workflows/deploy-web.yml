@@ -1,0 +1,43 @@
+name: Deploy web (Vercel)
+
+on:
+  push:
+    branches: [main, claude/sports-weather-app-q0v7we]
+    paths:
+      - "apps/web/**"
+      - "packages/shared/**"
+      - ".github/workflows/deploy-web.yml"
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      # Vincula (o crea) el proyecto de Vercel para apps/web. Si prefieres
+      # fijarlo explícitamente en vez de re-vincular en cada run, añade los
+      # secrets VERCEL_ORG_ID/VERCEL_PROJECT_ID y sustituye este paso por
+      # exportar esas dos variables antes de "vercel pull".
+      - name: Link Vercel project
+        working-directory: apps/web
+        run: vercel link --yes --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Pull Vercel environment
+        working-directory: apps/web
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build
+        working-directory: apps/web
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy
+        working-directory: apps/web
+        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}

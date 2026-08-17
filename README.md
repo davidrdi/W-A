@@ -62,6 +62,53 @@ tsconfig.build.json` → `dist/`, real JS sin ambigüedad de extensión) que `ap
 `predev`/`prebuild` y consume vía `turbopack.resolveAlias` en `next.config.ts` — mobile y backend
 siguen consumiendo `src/index.ts` sin tocar, no hay build que mantener sincronizado para ellos.
 
+## Despliegue
+
+`apps/web` en Vercel, `apps/backend` en Render. Ningún token vive en el repo — solo en Secrets de
+GitHub (para el deploy de Vercel) o en el dashboard de Render (que despliega solo, sin GitHub
+Actions).
+
+### apps/web → Vercel (automático vía GitHub Actions)
+
+1. Genera un token en [vercel.com/account/tokens](https://vercel.com/account/tokens).
+2. En GitHub: **Settings → Secrets and variables → Actions → New repository secret** → nombre
+   `VERCEL_TOKEN`, valor el token.
+3. Haz push a `main` o a esta rama con cambios en `apps/web/` o `packages/shared/` — el workflow
+   `.github/workflows/deploy-web.yml` vincula el proyecto, hace build y despliega a producción
+   automáticamente. Primer run: crea el proyecto en Vercel él solo (`vercel link --yes`).
+4. Una vez creado el proyecto, entra en Vercel → tu proyecto → **Settings → Environment
+   Variables** y añade `NEXT_PUBLIC_API_URL` apuntando a la URL de Render del paso siguiente
+   (ej. `https://w-a-backend.onrender.com`) — sin esto, la web no encuentra el backend en
+   producción. Vuelve a desplegar (o re-ejecuta el workflow) tras añadirla.
+
+Si `vercel link --yes` fallara por ambigüedad de cuenta/equipo, añade también los secrets
+`VERCEL_ORG_ID`/`VERCEL_PROJECT_ID` (los obtienes corriendo `vercel link` una vez en tu propio
+ordenador dentro de `apps/web`, mirando el `.vercel/project.json` que genera) y sustituye el paso
+"Link Vercel project" del workflow por exportar esas dos variables antes de `vercel pull`.
+
+### apps/backend → Render (automático, sin GitHub Actions)
+
+Render tiene integración nativa con GitHub — no hace falta workflow, despliega solo en cada push
+una vez conectado:
+
+1. [render.com](https://render.com) → **New → Web Service** → conecta el repo `davidrdi/w-a`.
+2. **Root Directory**: déjalo vacío (raíz del monorepo — el backend depende de `@w-a/shared` vía
+   npm workspaces, necesita instalarse desde la raíz).
+3. **Build Command**: `npm install`
+4. **Start Command**: `npm start --workspace apps/backend`
+5. **Plan**: Free.
+6. Variables de entorno (mismas que `apps/backend/.env.example`): `ANTHROPIC_API_KEY`,
+   `OVERPASS_ENDPOINT` (`https://overpass-api.de/api/interpreter`), `INTERNAL_JOB_SECRET`
+   (genera uno con `openssl rand -hex 32`). `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY` se añaden
+   más adelante, cuando exista el proyecto Supabase (ver "Auth y favoritos" — sin ellos, todo
+   funciona salvo login/favoritos). No hace falta fijar `PORT`: Render lo inyecta solo y el
+   backend ya lee `process.env.PORT`.
+7. Copia la URL que te da Render (`https://<nombre-del-servicio>.onrender.com`) y ponla como
+   `NEXT_PUBLIC_API_URL` en Vercel (paso 4 de arriba).
+
+El plan Free de Render "duerme" el servicio tras ~15 min sin tráfico — la primera petición
+después de dormido tarda ~30s en responder mientras arranca.
+
 ## Diseño de mapa
 
 Los pines del mapa reutilizan el lenguaje visual de [Trebo](https://github.com/davidrdi/trebo)
