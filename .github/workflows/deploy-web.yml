@@ -22,36 +22,16 @@ jobs:
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
 
-      # Vincula (o crea) el proyecto de Vercel para apps/web. Si prefieres
-      # fijarlo explícitamente en vez de re-vincular en cada run, añade los
-      # secrets VERCEL_ORG_ID/VERCEL_PROJECT_ID y sustituye este paso por
-      # exportar esas dos variables antes de "vercel pull".
-      - name: Link Vercel project
+      # "vercel build" + "vercel deploy --prebuilt" (compilar en el runner de
+      # GitHub y subir el resultado) tropezaba una y otra vez con
+      # dependencias hoisteadas a la raíz del monorepo (client-only, luego
+      # @opentelemetry/api, probablemente más) — el paso de deploy sólo
+      # empaqueta lo que ve dentro de apps/web y ni "Include source files
+      # outside of the Root Directory" (activado en el proyecto) lo arregló.
+      # En vez de reproducir a mano cómo Vercel resuelve un monorepo, dejamos
+      # que compile en su propia infraestructura (un solo "vercel deploy",
+      # sin --prebuilt): es el camino más usado y mejor probado para
+      # monorepos con npm workspaces.
+      - name: Deploy to Vercel
         working-directory: apps/web
-        run: vercel link --yes --token=${{ secrets.vercel }}
-
-      - name: Pull Vercel environment
-        working-directory: apps/web
-        run: vercel pull --yes --environment=production --token=${{ secrets.vercel }}
-
-      # "vercel build" hace su propia instalación (workspace-aware, resuelve
-      # @w-a/shared bien) pero hoistea client-only — una dependencia implícita
-      # de Next que su output tracer siempre referencia — fuera de apps/web
-      # (a la raíz del monorepo). Vale para el build, pero el paso de deploy
-      # empaqueta la función serverless mirando solo dentro de apps/web (su
-      # Root Directory) y falla con "File does not exist:
-      # node_modules/client-only/...". Poner esto ANTES de "Build" no sirve:
-      # su instalación lo trata como sobrante y lo borra ("removed 1
-      # package"). Va después del build, justo antes del deploy.
-      - name: Build
-        working-directory: apps/web
-        run: vercel build --prod --token=${{ secrets.vercel }}
-
-      - name: Ensure client-only is reachable from apps/web for the deploy step
-        run: |
-          mkdir -p apps/web/node_modules/client-only
-          cp -r node_modules/client-only/. apps/web/node_modules/client-only/
-
-      - name: Deploy
-        working-directory: apps/web
-        run: vercel deploy --prebuilt --prod --token=${{ secrets.vercel }}
+        run: vercel deploy --prod --yes --token=${{ secrets.vercel }}

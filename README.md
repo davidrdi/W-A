@@ -76,17 +76,14 @@ Actions).
    convencional `VERCEL_TOKEN`, créalo así y actualiza la referencia en
    `.github/workflows/deploy-web.yml`).
 3. Haz push a `main` o a esta rama con cambios en `apps/web/` o `packages/shared/` — el workflow
-   `.github/workflows/deploy-web.yml` vincula el proyecto, hace build y despliega a producción
-   automáticamente. Primer run: crea el proyecto en Vercel él solo (`vercel link --yes`).
+   `.github/workflows/deploy-web.yml` corre `vercel deploy --prod` desde `apps/web`, que vincula
+   (o crea) el proyecto y despliega. El build ocurre en la propia infraestructura de Vercel, no en
+   el runner de GitHub — es el camino recomendado para monorepos con npm workspaces (evita tener
+   que reproducir a mano cómo Vercel resuelve dependencias hoisteadas a la raíz del monorepo).
 4. Una vez creado el proyecto, entra en Vercel → tu proyecto → **Settings → Environment
    Variables** y añade `NEXT_PUBLIC_API_URL` apuntando a la URL de Render del paso siguiente
    (ej. `https://w-a-backend.onrender.com`) — sin esto, la web no encuentra el backend en
    producción. Vuelve a desplegar (o re-ejecuta el workflow) tras añadirla.
-
-Si `vercel link --yes` fallara por ambigüedad de cuenta/equipo, añade también los secrets
-`VERCEL_ORG_ID`/`VERCEL_PROJECT_ID` (los obtienes corriendo `vercel link` una vez en tu propio
-ordenador dentro de `apps/web`, mirando el `.vercel/project.json` que genera) y sustituye el paso
-"Link Vercel project" del workflow por exportar esas dos variables antes de `vercel pull`.
 
 ### apps/backend → Render (automático, sin GitHub Actions)
 
