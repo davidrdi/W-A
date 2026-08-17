@@ -4,6 +4,8 @@ import type { HealthResponse } from "@w-a/shared";
 
 import { registerExplainRoute } from "./routes/explain.js";
 import { registerFavoritesRoute } from "./routes/favorites.js";
+import { registerInternalNotifyRoute } from "./routes/internalNotify.js";
+import { registerPushTokensRoute } from "./routes/pushTokens.js";
 import { registerQueryRoute } from "./routes/query.js";
 import { registerRecommendRoute } from "./routes/recommend.js";
 import { registerSpotsRoute } from "./routes/spots.js";
@@ -25,6 +27,8 @@ await registerExplainRoute(app);
 await registerWeatherRoute(app);
 await registerQueryRoute(app);
 await registerFavoritesRoute(app);
+await registerPushTokensRoute(app);
+await registerInternalNotifyRoute(app);
 
 app
   .listen({ port: PORT, host: "0.0.0.0" })

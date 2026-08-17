@@ -2,7 +2,8 @@ import type { Session } from "@supabase/supabase-js";
 import type { Favorite, Sport } from "@w-a/shared";
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 
-import { addFavorite, fetchFavorites, removeFavorite } from "./api";
+import { addFavorite, fetchFavorites, registerPushToken, removeFavorite } from "./api";
+import { getExpoPushToken } from "./pushNotifications";
 import { isSupabaseConfigured, supabase } from "./supabase";
 
 interface FavoritableSpot {
@@ -63,6 +64,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     refreshFavorites();
   }, [refreshFavorites]);
+
+  // Al iniciar sesión, se registra el push token si el usuario da permiso
+  // (V2: notificaciones de favoritos). Falla en silencio sin proyecto EAS
+  // configurado o sin dispositivo físico — no debe romper el login.
+  useEffect(() => {
+    if (!session) return;
+    getExpoPushToken().then((token) => {
+      if (token) registerPushToken(session.access_token, token).catch(() => {});
+    });
+  }, [session]);
 
   const signIn = async (email: string, password: string): Promise<string | null> => {
     if (!supabase) return "Supabase no está configurado todavía.";

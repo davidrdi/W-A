@@ -10,8 +10,31 @@ create table if not exists public.favorites (
   lat double precision not null,
   lon double precision not null,
   created_at timestamptz not null default now(),
+  -- Última fecha (YYYY-MM-DD) en que se evaluó/notificó este favorito —
+  -- evita mandar el push de "buen día" más de una vez al día por spot.
+  last_notified_date date,
   unique (user_id, spot_id, sport)
 );
+
+-- V2: tokens de Expo Push para las notificaciones proactivas de favoritos.
+-- Un usuario puede tener varios (varios dispositivos).
+create table if not exists public.push_tokens (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  token text not null,
+  created_at timestamptz not null default now(),
+  unique (user_id, token)
+);
+
+alter table public.push_tokens enable row level security;
+
+create policy "push_tokens_select_own" on public.push_tokens
+  for select using (auth.uid() = user_id);
+
+create policy "push_tokens_insert_own" on public.push_tokens
+  for insert with check (auth.uid() = user_id);
+
+create index if not exists push_tokens_user_id_idx on public.push_tokens (user_id);
 
 alter table public.favorites enable row level security;
 

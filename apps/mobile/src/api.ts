@@ -110,3 +110,11 @@ export async function removeFavorite(accessToken: string, id: string): Promise<v
     headers: { Authorization: `Bearer ${accessToken}` },
   });
 }
+
+export async function registerPushToken(accessToken: string, expoPushToken: string): Promise<void> {
+  await request<void>("/push-tokens", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify({ expoPushToken }),
+  });
+}

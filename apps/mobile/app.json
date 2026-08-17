@@ -14,7 +14,8 @@
         {
           "locationWhenInUsePermission": "Usamos tu ubicación para calcular la distancia a cada zona recomendada. Es opcional: sin permiso, la distancia se calcula desde la localidad que busques."
         }
-      ]
+      ],
+      "expo-notifications"
     ],
     "ios": {
       "supportsTablet": true

@@ -119,6 +119,55 @@ en lenguaje natural, favoritos) antes de entrar a la app — se guarda para no r
 `ScoreLegend` (verde/ámbar/rojo + qué significa cada uno) aparece junto a cualquier lista de
 resultados con pines coloreados (mapa y cuestionario).
 
+## V2: notificaciones push de favoritos
+
+`POST /internal/notify-favorites` (protegida por cabecera `x-internal-secret`, no por
+`requireAuth` — no hay un usuario detrás, es un job de sistema): recorre todos los favoritos no
+evaluados hoy, calcula su score con las mismas reglas deterministas de siempre y manda un push
+("hoy es buen día para tu playa favorita") solo si está en verde. Se marca como evaluado el mismo
+día se envíe push o no, para no recalcular dos veces si el job corre más de una vez.
+
+- No hay scheduler propio corriendo dentro de este backend — hay que llamar a ese endpoint una
+  vez al día desde algo externo (un cron del hosting, una Supabase scheduled function, GitHub
+  Actions con `schedule`...). Genera `INTERNAL_JOB_SECRET` (ej. `openssl rand -hex 32`) y
+  configúralo tanto en el backend como en quien dispare el job.
+- El móvil pide permiso de notificaciones y registra el token (`POST /push-tokens`) al iniciar
+  sesión — falla en silencio (no hay notificaciones, pero tampoco rompe el login) si no hay
+  permiso, no es un dispositivo físico, o no hay proyecto EAS configurado en `app.json`
+  (`expo-notifications` necesita un `projectId` de EAS para pedir el token en producción).
+- Requiere las migraciones nuevas de `apps/backend/supabase/schema.sql` (tabla `push_tokens` +
+  columna `last_notified_date` en `favorites`) — vuelve a pegar el archivo completo en el SQL
+  Editor si ya creaste el proyecto antes de esta versión.
+
+### Lo que NO se ha construido en V2, y por qué
+
+- **AEMET avisos oficiales**: el endpoint real de AEMET devuelve los avisos en formato CAP dentro
+  de un `.tar` (XML comprimido), no JSON simple. No hay forma de verificar esa integración contra
+  una respuesta real sin acceso de red a `opendata.aemet.es`, y el riesgo de parsear un binario a
+  ciegas y que quede silenciosamente roto es alto. Pendiente de construir con acceso real a la API.
+- **Mareas de precisión (Copernicus Marine / Puertos del Estado)**: mismo problema — APIs con
+  formatos menos estandarizados (NetCDF, XML propio) que tampoco se han podido probar en vivo.
+- **Self-host de Overpass**: es infraestructura de despliegue, no código de la app —
+  `OVERPASS_ENDPOINT` ya es configurable por variable de entorno desde el primer día, solo hay
+  que apuntarlo a una instancia propia cuando exista.
+- **Redis**: `apps/backend/src/lib/cache.ts` ya aísla toda la caché detrás de una única función
+  (`getOrSet`) — cambiar el `Map` en memoria por un cliente Redis es un cambio contenido a ese
+  archivo, no hay que tocar los servicios que lo usan. No se ha instalado el cliente porque no hay
+  un Redis real corriendo contra el que probarlo.
+
+## Nota de compatibilidad: `expo` como devDependency en la raíz
+
+`package.json` de la raíz del monorepo declara `expo` como devDependency aunque el código de la
+raíz no lo usa directamente. Es intencional: con solo `apps/mobile` dependiendo de `expo`, npm
+workspaces a veces hospeda `expo-notifications` en el `node_modules` raíz mientras deja `expo` y
+`expo-modules-core` anidados en `apps/mobile/node_modules` — un árbol inconsistente que rompe la
+resolución de tipos y el config plugin de `expo-notifications` (`Cannot find module
+'expo/config-plugins'`). Declarar `expo` también en la raíz fuerza a npm a hospedar todo junto de
+forma consistente. Si en el futuro aparece el mismo error con otro paquete `expo-*`, el arreglo es
+el mismo patrón: añadir `expo` (o el paquete conflictivo) como devDependency en la raíz y
+reinstalar limpio (`rm -rf node_modules apps/*/node_modules packages/*/node_modules && npm
+install`).
+
 ## Plan de producto
 
 El desarrollo sigue un plan por fases (scaffold → meteo básico → scoring y mapa → explicación IA

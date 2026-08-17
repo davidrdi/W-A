@@ -9,14 +9,14 @@ vi.mock("@supabase/supabase-js", () => ({
 process.env.SUPABASE_URL = "https://example.supabase.co";
 process.env.SUPABASE_SERVICE_ROLE_KEY = "test-service-role-key";
 
-import { createFavorite, deleteFavorite, listFavorites } from "./favoritesDb.js";
+import { createFavorite, deleteFavorite, listAllFavorites, listFavorites, markFavoriteNotified } from "./favoritesDb.js";
 
 // La query builder de supabase-js encadena métodos y el resultado final es
 // "thenable" — este mock replica eso: cada método devuelve la propia
 // cadena, y resolver el `await` dispara `.then` con el resultado dado.
 function chainable(result: { data: unknown; error: { message: string } | null }) {
   const chain: Record<string, unknown> = {};
-  for (const method of ["select", "eq", "order", "upsert", "delete", "single"]) {
+  for (const method of ["select", "eq", "order", "upsert", "delete", "single", "update"]) {
     chain[method] = vi.fn(() => chain);
   }
   chain.then = (resolve: (value: typeof result) => unknown) => Promise.resolve(result).then(resolve);
@@ -97,5 +97,48 @@ describe("deleteFavorite", () => {
     expect(chain.delete).toHaveBeenCalled();
     expect(chain.eq).toHaveBeenNthCalledWith(1, "id", "fav-1");
     expect(chain.eq).toHaveBeenNthCalledWith(2, "user_id", "user-1");
+  });
+});
+
+describe("listAllFavorites (para el job de notificaciones)", () => {
+  beforeEach(() => {
+    mockFrom.mockReset();
+  });
+
+  it("mapea también user_id y last_notified_date", async () => {
+    mockFrom.mockReturnValue(
+      chainable({ data: [{ ...ROW, user_id: "user-1", last_notified_date: "2026-08-16" }], error: null }),
+    );
+
+    const favorites = await listAllFavorites();
+
+    expect(favorites).toEqual([
+      {
+        id: "fav-1",
+        userId: "user-1",
+        spotId: "way/1",
+        spotName: "Parque de Santa Margarita",
+        sport: "running",
+        lat: 43.37,
+        lon: -8.4,
+        lastNotifiedDate: "2026-08-16",
+      },
+    ]);
+  });
+});
+
+describe("markFavoriteNotified", () => {
+  beforeEach(() => {
+    mockFrom.mockReset();
+  });
+
+  it("actualiza last_notified_date del favorito indicado", async () => {
+    const chain = chainable({ data: null, error: null });
+    mockFrom.mockReturnValue(chain);
+
+    await markFavoriteNotified("fav-1", "2026-08-17");
+
+    expect(chain.update).toHaveBeenCalledWith({ last_notified_date: "2026-08-17" });
+    expect(chain.eq).toHaveBeenCalledWith("id", "fav-1");
   });
 });
