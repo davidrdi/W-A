@@ -5,12 +5,21 @@ export interface HealthResponse {
   service: string;
 }
 
+// De tags de OSM (naturist=yes, dog=yes/leashed/no). Todos opcionales:
+// ausencia de campo significa "sin dato", no "no". `dogsAllowed` aplica a
+// cualquier categoría (parques, senderos...), `naturist` solo a playas.
+export interface SpotAmenities {
+  naturist?: boolean;
+  dogsAllowed?: boolean;
+}
+
 export interface Spot {
   id: string;
   name: string;
   lat: number;
   lon: number;
   sport: Sport;
+  amenities?: SpotAmenities;
 }
 
 export interface WeatherSnapshot {
@@ -74,6 +83,7 @@ export interface SpotGroundingPayload {
   weather: WeatherSnapshot;
   /** Solo presente para playa/surf/windsurf. */
   marine?: MarineSnapshot;
+  amenities?: SpotAmenities;
 }
 
 export interface SpotExplanation {
@@ -96,6 +106,7 @@ export interface ExplainRequest {
   name: string;
   lat: number;
   lon: number;
+  amenities?: SpotAmenities;
 }
 
 export interface FollowUpRequest {

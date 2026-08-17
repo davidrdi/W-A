@@ -11,12 +11,20 @@ import { scoreBandFor, scoreLandSport, scoreWaterSport } from "../scoring/rules.
 // El score lo decide SIEMPRE el backend (scoring/rules.ts) — a Claude solo
 // se le pide que explique en palabras un score que ya viene calculado,
 // nunca que lo ponga.
+const amenitiesSchema = z.object({
+  naturist: z.boolean().optional(),
+  dogsAllowed: z.boolean().optional(),
+});
+
+// spotId/lat/lon vienen del spot ya listado por /spots — las amenidades
+// también, para no tener que re-consultar Overpass solo para leer dos tags.
 const explainSchema = z.object({
   sport: z.enum(SPORT_VALUES),
   spotId: z.string().min(1),
   name: z.string().min(1),
   lat: z.number(),
   lon: z.number(),
+  amenities: amenitiesSchema.optional(),
 });
 
 const weatherSchema = z.object({
@@ -41,6 +49,7 @@ const groundingPayloadSchema = z.object({
   scoreBand: z.enum(["green", "amber", "red"]),
   weather: weatherSchema,
   marine: marineSchema.optional(),
+  amenities: amenitiesSchema.optional(),
 });
 
 const followUpSchema = z.object({
@@ -55,7 +64,7 @@ export async function registerExplainRoute(app: FastifyInstance) {
     if (!parsed.success) {
       return reply.status(400).send({ error: "Parámetros inválidos", details: parsed.error.flatten() });
     }
-    const { sport, name, lat, lon } = parsed.data;
+    const { sport, name, lat, lon, amenities } = parsed.data;
 
     const [weather] = await getWeatherSnapshots([{ lat, lon }]);
 
@@ -63,10 +72,10 @@ export async function registerExplainRoute(app: FastifyInstance) {
     if (isWaterSport(sport)) {
       const [marine] = await getMarineSnapshots([{ lat, lon }]);
       const score = scoreWaterSport(sport, weather, marine);
-      groundingPayload = { sport, spotName: name, score, scoreBand: scoreBandFor(score), weather, marine };
+      groundingPayload = { sport, spotName: name, score, scoreBand: scoreBandFor(score), weather, marine, amenities };
     } else {
       const score = scoreLandSport(sport, weather);
-      groundingPayload = { sport, spotName: name, score, scoreBand: scoreBandFor(score), weather };
+      groundingPayload = { sport, spotName: name, score, scoreBand: scoreBandFor(score), weather, amenities };
     }
 
     const explanation = await explainSpot(groundingPayload);

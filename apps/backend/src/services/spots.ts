@@ -1,4 +1,4 @@
-import type { Spot, Sport } from "@w-a/shared";
+import type { Spot, SpotAmenities, Sport } from "@w-a/shared";
 import { getOrSet, SEVEN_DAYS_MS } from "../lib/cache.js";
 
 const OVERPASS_ENDPOINT = process.env.OVERPASS_ENDPOINT ?? "https://overpass-api.de/api/interpreter";
@@ -75,6 +75,23 @@ const CATEGORY_QUERY: Record<SpotCategory, (areaId: number) => string> = {
   `,
 };
 
+// `out tags center` ya trae todos los tags de OSM del elemento — solo hace
+// falta leer los que nos interesan. Ausencia de tag = "sin dato" (undefined),
+// nunca se asume "no": si OSM no dice nada de perros, no afirmamos que estén
+// prohibidos.
+function parseAmenities(tags: Record<string, string> | undefined): SpotAmenities | undefined {
+  if (!tags) return undefined;
+  const amenities: SpotAmenities = {};
+
+  if (tags.naturist === "yes") amenities.naturist = true;
+  else if (tags.naturist === "no") amenities.naturist = false;
+
+  if (tags.dog === "yes" || tags.dog === "leashed") amenities.dogsAllowed = true;
+  else if (tags.dog === "no") amenities.dogsAllowed = false;
+
+  return Object.keys(amenities).length > 0 ? amenities : undefined;
+}
+
 function fallbackName(el: OverpassElement, category: SpotCategory): string {
   if (el.tags?.leisure === "park") return "Parque sin nombre";
   if (el.tags?.natural === "beach") return "Playa sin nombre";
@@ -118,6 +135,7 @@ export async function findSpots(sport: Sport, areaId: number, limit = 8): Promis
       lat,
       lon,
       sport,
+      amenities: parseAmenities(el.tags),
     };
   });
 }

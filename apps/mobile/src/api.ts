@@ -48,7 +48,14 @@ export async function fetchSpots(sport: Sport, locality: string): Promise<SpotsR
 }
 
 export async function explainSpot(spot: ScoredSpot): Promise<SpotExplanation> {
-  const request: ExplainRequest = { sport: spot.sport, spotId: spot.id, name: spot.name, lat: spot.lat, lon: spot.lon };
+  const request: ExplainRequest = {
+    sport: spot.sport,
+    spotId: spot.id,
+    name: spot.name,
+    lat: spot.lat,
+    lon: spot.lon,
+    amenities: spot.amenities,
+  };
   return postJson<SpotExplanation>("/explain", request);
 }
 

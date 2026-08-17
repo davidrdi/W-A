@@ -95,4 +95,42 @@ describe("findSpots", () => {
     // Misma área + misma categoría (beach) → una sola llamada real a Overpass.
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+
+  it("extrae nudismo y admisión de mascotas de los tags de OSM cuando están presentes", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          elements: [
+            {
+              type: "way",
+              id: 1,
+              center: { lat: 43.1, lon: -8.1 },
+              tags: { natural: "beach", name: "Praia Naturista", naturist: "yes", dog: "leashed" },
+            },
+            {
+              type: "way",
+              id: 2,
+              center: { lat: 43.2, lon: -8.2 },
+              tags: { natural: "beach", name: "Praia sin datos de mascotas" },
+            },
+            {
+              type: "way",
+              id: 3,
+              center: { lat: 43.3, lon: -8.3 },
+              tags: { natural: "beach", name: "Praia sin perros", dog: "no" },
+            },
+          ],
+        }),
+      }),
+    );
+
+    const spots = await findSpots("playa", 3_600_000_106, 3);
+
+    expect(spots[0].amenities).toEqual({ naturist: true, dogsAllowed: true });
+    // Sin tag de OSM -> sin dato, nunca se asume "no".
+    expect(spots[1].amenities).toBeUndefined();
+    expect(spots[2].amenities).toEqual({ dogsAllowed: false });
+  });
 });

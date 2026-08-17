@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { ChatMessage, ScoredSpot, SpotExplanation } from "@w-a/shared";
+import type { ChatMessage, ScoredSpot, SpotAmenities, SpotExplanation } from "@w-a/shared";
 import {
   ActivityIndicator,
   FlatList,
@@ -107,6 +107,8 @@ export function SpotDetailModal({ spot, distanceLabel, onClose }: Props) {
                 </View>
                 <Text style={styles.headline}>{explanation.headline}</Text>
               </View>
+              <AmenityBadges amenities={explanation.groundingPayload.amenities} />
+
               <Text style={styles.reasoning}>{explanation.reasoning}</Text>
               {explanation.cautions.map((caution) => (
                 <Text key={caution} style={styles.caution}>
@@ -145,6 +147,27 @@ export function SpotDetailModal({ spot, distanceLabel, onClose }: Props) {
         </KeyboardAvoidingView>
       </View>
     </Modal>
+  );
+}
+
+function AmenityBadges({ amenities }: { amenities?: SpotAmenities }) {
+  if (!amenities) return null;
+
+  const badges: string[] = [];
+  if (amenities.naturist) badges.push("Playa nudista");
+  if (amenities.dogsAllowed === true) badges.push("🐾 Admite perros");
+  if (amenities.dogsAllowed === false) badges.push("🚫 No admite perros");
+
+  if (badges.length === 0) return null;
+
+  return (
+    <View style={styles.badgeRow}>
+      {badges.map((badge) => (
+        <View key={badge} style={styles.badge}>
+          <Text style={styles.badgeText}>{badge}</Text>
+        </View>
+      ))}
+    </View>
   );
 }
 
@@ -213,6 +236,23 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     flexShrink: 1,
+  },
+  badgeRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginBottom: 8,
+  },
+  badge: {
+    backgroundColor: "#E6ECE3",
+    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  badgeText: {
+    fontSize: 12,
+    color: "#17211A",
+    fontWeight: "600",
   },
   reasoning: {
     fontSize: 14,
