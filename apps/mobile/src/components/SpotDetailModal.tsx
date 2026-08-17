@@ -14,6 +14,7 @@ import {
 } from "react-native";
 
 import { askFollowUp, explainSpot } from "../api";
+import { useAuth } from "../auth";
 import { SCORE_BAND_COLOR } from "../mapIcons";
 
 interface Props {
@@ -30,6 +31,22 @@ export function SpotDetailModal({ spot, distanceLabel, onClose }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [question, setQuestion] = useState("");
   const [asking, setAsking] = useState(false);
+  const [togglingFavorite, setTogglingFavorite] = useState(false);
+  const { session, isFavorite, toggleFavorite } = useAuth();
+
+  const favorited = spot ? isFavorite(spot.id, spot.sport) : false;
+
+  const handleToggleFavorite = async () => {
+    if (!spot || togglingFavorite) return;
+    setTogglingFavorite(true);
+    try {
+      await toggleFavorite(spot);
+    } catch {
+      // Silencioso: un fallo al guardar el favorito no debe romper el modal.
+    } finally {
+      setTogglingFavorite(false);
+    }
+  };
 
   useEffect(() => {
     if (!spot) return;
@@ -82,9 +99,20 @@ export function SpotDetailModal({ spot, distanceLabel, onClose }: Props) {
               <Text style={styles.title}>{spot?.name}</Text>
               {distanceLabel && <Text style={styles.distance}>A {distanceLabel}</Text>}
             </View>
-            <Pressable onPress={onClose} hitSlop={12}>
-              <Text style={styles.close}>Cerrar</Text>
-            </Pressable>
+            <View style={styles.headerActions}>
+              {session && (
+                <Pressable onPress={handleToggleFavorite} disabled={togglingFavorite} hitSlop={12}>
+                  {togglingFavorite ? (
+                    <ActivityIndicator size="small" />
+                  ) : (
+                    <Text style={styles.favoriteIcon}>{favorited ? "♥" : "♡"}</Text>
+                  )}
+                </Pressable>
+              )}
+              <Pressable onPress={onClose} hitSlop={12}>
+                <Text style={styles.close}>Cerrar</Text>
+              </Pressable>
+            </View>
           </View>
 
           {loadState.kind === "loading" && (
@@ -202,6 +230,16 @@ const styles = StyleSheet.create({
   distance: {
     fontSize: 13,
     color: "#52625A",
+  },
+  headerActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+  },
+  favoriteIcon: {
+    fontSize: 22,
+    color: "#B4432E",
+    lineHeight: 22,
   },
   close: {
     color: "#235C4D",

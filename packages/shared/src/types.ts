@@ -157,3 +157,25 @@ export interface QueryResponse {
   localityCenter: LatLon;
   spots: RankedSpot[];
 }
+
+export interface Favorite {
+  id: string;
+  spotId: string;
+  spotName: string;
+  sport: Sport;
+  lat: number;
+  lon: number;
+  createdAt: string;
+}
+
+export interface FavoritesResponse {
+  favorites: Favorite[];
+}
+
+export interface CreateFavoriteRequest {
+  spotId: string;
+  spotName: string;
+  sport: Sport;
+  lat: number;
+  lon: number;
+}

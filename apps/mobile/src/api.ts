@@ -1,6 +1,9 @@
 import type {
   ChatMessage,
+  CreateFavoriteRequest,
   ExplainRequest,
+  Favorite,
+  FavoritesResponse,
   FollowUpResponse,
   HealthResponse,
   QueryResponse,
@@ -14,17 +17,22 @@ import type {
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000";
 
-async function postJson<T>(path: string, body: unknown): Promise<T> {
-  const response = await fetch(`${API_URL}${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+async function request<T>(path: string, init: RequestInit): Promise<T> {
+  const response = await fetch(`${API_URL}${path}`, init);
   if (!response.ok) {
     const errorBody = await response.json().catch(() => null);
     throw new Error(errorBody?.error ?? `Backend respondió ${response.status}`);
   }
+  if (response.status === 204) return undefined as T;
   return response.json();
+}
+
+async function postJson<T>(path: string, body: unknown): Promise<T> {
+  return request<T>(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
 }
 
 export async function fetchHealth(): Promise<HealthResponse> {
@@ -82,4 +90,23 @@ export async function fetchWeather(locality: string): Promise<WeatherResponse> {
     throw new Error(body?.error ?? `Backend respondió ${response.status}`);
   }
   return response.json();
+}
+
+export async function fetchFavorites(accessToken: string): Promise<FavoritesResponse> {
+  return request<FavoritesResponse>("/favorites", { headers: { Authorization: `Bearer ${accessToken}` } });
+}
+
+export async function addFavorite(accessToken: string, input: CreateFavoriteRequest): Promise<Favorite> {
+  return request<Favorite>("/favorites", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify(input),
+  });
+}
+
+export async function removeFavorite(accessToken: string, id: string): Promise<void> {
+  await request<void>(`/favorites/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
 }

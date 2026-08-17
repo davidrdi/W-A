@@ -76,6 +76,41 @@ localidad o por coordenadas.
 Limitación conocida: para regiones compuestas ("sur de Galicia") Claude elige la localidad real más
 razonable dentro de esa zona, no hay un gazetteer de "sur/norte de X" — documentado en el plan de producto.
 
+## Auth y favoritos
+
+Autenticación: el móvil habla DIRECTO con Supabase Auth (email/contraseña) usando la anon key —
+el backend nunca ve contraseñas. El móvil manda el JWT resultante al backend en cada petición a
+`/favorites`, que lo verifica (`lib/auth.ts#requireAuth`) y solo entonces lee/escribe filtrando
+siempre por el `user_id` verificado (nunca uno que venga del cliente).
+
+- `GET /favorites`, `POST /favorites`, `DELETE /favorites/:id` — todas requieren
+  `Authorization: Bearer <token>`.
+- El botón de favorito (♡/♥) del modal de detalle de spot solo aparece si hay sesión iniciada.
+- La pestaña "Favoritos" muestra login/registro si no hay sesión, o la lista guardada si la hay.
+
+### Crear el proyecto Supabase desde cero
+
+1. Crea una cuenta y un proyecto nuevo en [supabase.com](https://supabase.com) (plan gratuito
+   vale para desarrollo).
+2. En el proyecto, ve a **SQL Editor > New query**, pega el contenido de
+   `apps/backend/supabase/schema.sql` y dale a **Run**. Esto crea la tabla `favorites` con Row
+   Level Security activado.
+3. Ve a **Project Settings > API** y copia:
+   - **Project URL** → `SUPABASE_URL` (backend) y `EXPO_PUBLIC_SUPABASE_URL` (móvil).
+   - **anon public key** → `EXPO_PUBLIC_SUPABASE_ANON_KEY` (móvil; es pública por diseño, la
+     protege RLS).
+   - **service_role key** → `SUPABASE_SERVICE_ROLE_KEY` (**solo backend**, nunca en el móvil ni
+     en un repo).
+4. Rellena `apps/backend/.env` y `apps/mobile/.env` (copiados de sus `.env.example`) con esos
+   valores.
+5. Por defecto, Supabase pide confirmación de email al registrarse. Para probar rápido en
+   desarrollo: **Authentication > Providers > Email > Confirm email → desactivar** (actívalo de
+   nuevo antes de producción).
+
+Sin estas variables configuradas, el resto de la app (mapa, cuestionario, tiempo) sigue
+funcionando con normalidad — la pestaña Favoritos simplemente avisa de que Supabase no está
+configurado en vez de fallar.
+
 ## Plan de producto
 
 El desarrollo sigue un plan por fases (scaffold → meteo básico → scoring y mapa → explicación IA
