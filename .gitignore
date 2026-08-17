@@ -12,6 +12,14 @@ apps/mobile/*.mobileprovision
 # Backend
 apps/backend/dist/
 
+# Web
+apps/web/.next/
+
+# Shared (build compilado solo para que apps/web lo resuelva sin ambigüedad;
+# mobile/backend consumen el .ts fuente directamente, ver README)
+packages/shared/dist/
+
 # OS / editors
 .DS_Store
 *.log
+*.tsbuildinfo

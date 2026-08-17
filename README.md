@@ -8,13 +8,14 @@ ayer (estado del terreno) y una recomendación de zona generada por IA a partir 
 
 ```
 apps/
-  mobile/    # App Expo (React Native + TypeScript)
+  mobile/    # App Expo (React Native + TypeScript) — producto principal
+  web/       # App Next.js (React + TypeScript) — preview/uso desde navegador
   backend/   # API Fastify (Node + TypeScript)
 packages/
-  shared/    # Tipos compartidos entre mobile y backend
+  shared/    # Tipos y utilidades compartidas entre mobile, web y backend
 ```
 
-El móvil nunca llama directo a APIs externas (meteo, geodatos, Anthropic) — todo pasa por el
+Ni mobile ni web llaman directo a APIs externas (meteo, geodatos, Anthropic) — todo pasa por el
 backend, que agrega, cachea y normaliza antes de responder.
 
 ## Desarrollo
@@ -29,16 +30,37 @@ npm run backend:dev
 
 # App móvil (Expo Go)
 npm run mobile:start
+
+# App web (http://localhost:4000 — puerto distinto al backend, :3000)
+npm run web:dev
 ```
 
 Copia `apps/backend/.env.example` a `apps/backend/.env` y rellena las claves (Anthropic,
-Supabase). El móvil apunta al backend vía `EXPO_PUBLIC_API_URL` (por defecto
-`http://localhost:3000`).
+Supabase). El móvil apunta al backend vía `EXPO_PUBLIC_API_URL`, la web vía
+`NEXT_PUBLIC_API_URL` (copiar `apps/web/.env.example` a `.env.local`) — ambas por defecto
+`http://localhost:3000`.
 
 ```bash
 npm run typecheck
 npm run test
 ```
+
+### App web (apps/web)
+
+Next.js (App Router) + Tailwind + Leaflet vanilla, con la misma arquitectura que
+[Trebo](https://github.com/davidrdi/trebo) (mismo autor): mapa Leaflet imperativo con tiles de
+CARTO Voyager, pines por `L.divIcon` con HTML generado desde `buildPinHtml` (shared), sin Google
+Maps. Cubre las pantallas "Buscar" (cuestionario en lenguaje natural) y "Mapa" (deporte +
+localidad); auth/favoritos y los anillos de score multi-deporte del modal aún no están portados
+a web (sí en mobile, ver más abajo).
+
+`@w-a/shared` es un paquete `"type": "module"` con `moduleResolution: nodenext` (lo exige
+ejecutar el backend directo con `tsx`/Node) — sus re-exports internos usan extensión `.js` aunque
+el archivo real sea `.ts` (`./types.js` → `types.ts`). Metro (mobile) y tsx (backend) resuelven
+eso solos; Turbopack no. Por eso `packages/shared` tiene un `npm run build` (`tsc -p
+tsconfig.build.json` → `dist/`, real JS sin ambigüedad de extensión) que `apps/web` ejecuta como
+`predev`/`prebuild` y consume vía `turbopack.resolveAlias` en `next.config.ts` — mobile y backend
+siguen consumiendo `src/index.ts` sin tocar, no hay build que mantener sincronizado para ellos.
 
 ## Diseño de mapa
 

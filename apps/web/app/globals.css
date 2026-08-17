@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-primary: #235c4d;
+  --color-primary-hover: #1a463a;
+  --color-surface: #f2f4f1;
+  --color-border: #d3dcce;
+  --color-text-primary: #17211a;
+  --color-text-secondary: #52625a;
+  --color-danger: #b4432e;
+  --color-score-green: #16a34a;
+  --color-score-amber: #f59e0b;
+  --color-score-red: #dc2626;
+}
+
+body {
+  color: var(--color-text-primary);
+  background: #fff;
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
+}
+
+/* Pines de deporte (L.divIcon con HTML de buildPinHtml en @w-a/shared) van
+   sin el fondo blanco/borde que Leaflet añade por defecto a divIcon. */
+.leaflet-div-icon {
+  background: transparent;
+  border: none;
+}
+
+.w-a-popup .leaflet-popup-content-wrapper {
+  border-radius: 10px;
+}
