@@ -1,0 +1,22 @@
+@baseUrl = http://localhost:3000
+
+### Health check
+GET {{baseUrl}}/health
+
+### Running en A Coruña — debe devolver solo spots dentro del municipio
+# (verificar a mano que ninguno cae en Ferrol u otro municipio vecino)
+GET {{baseUrl}}/recommend?sport=running&locality=A Coruña
+
+### Running en una localidad ambigua con topónimo repetido
+GET {{baseUrl}}/recommend?sport=running&locality=Santiago de Compostela
+
+### Falta locality → 400
+GET {{baseUrl}}/recommend?sport=running
+
+### Deporte aún no soportado en la Fase 1 → 400
+GET {{baseUrl}}/recommend?sport=playa&locality=Vigo
+
+# Nota: este backend depende de nominatim.openstreetmap.org, overpass-api.de
+# y api.open-meteo.com. En el sandbox de Claude Code on the web estos hosts
+# están bloqueados por la política de red de la sesión — probar estas
+# peticiones en local o en un entorno con esos hosts permitidos.
