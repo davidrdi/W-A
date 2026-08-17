@@ -13,6 +13,7 @@ import MapView, { Marker } from "react-native-maps";
 import type { ScoredSpot } from "@w-a/shared";
 
 import { fetchSpots } from "../../src/api";
+import { SpotDetailModal } from "../../src/components/SpotDetailModal";
 import { SportPin } from "../../src/components/SportPin";
 
 const SPAIN_REGION = {
@@ -28,6 +29,7 @@ export default function MapScreen() {
   const [locality, setLocality] = useState("A Coruña");
   const [spots, setSpots] = useState<ScoredSpot[]>([]);
   const [state, setState] = useState<SearchState>({ kind: "idle" });
+  const [selectedSpot, setSelectedSpot] = useState<ScoredSpot | null>(null);
   const mapRef = useRef<MapView>(null);
 
   const search = async () => {
@@ -59,11 +61,14 @@ export default function MapScreen() {
             title={spot.name}
             description={`Puntuación ${spot.score}/100`}
             tracksViewChanges={false}
+            onPress={() => setSelectedSpot(spot)}
           >
             <SportPin sport={spot.sport} scoreBand={spot.scoreBand} />
           </Marker>
         ))}
       </MapView>
+
+      <SpotDetailModal spot={selectedSpot} onClose={() => setSelectedSpot(null)} />
 
       <View style={styles.searchBar}>
         <TextInput

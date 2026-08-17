@@ -1,6 +1,29 @@
-import type { HealthResponse, Sport, SpotsResponse } from "@w-a/shared";
+import type {
+  ChatMessage,
+  ExplainRequest,
+  FollowUpResponse,
+  HealthResponse,
+  ScoredSpot,
+  SpotExplanation,
+  SpotGroundingPayload,
+  Sport,
+  SpotsResponse,
+} from "@w-a/shared";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000";
+
+async function postJson<T>(path: string, body: unknown): Promise<T> {
+  const response = await fetch(`${API_URL}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => null);
+    throw new Error(errorBody?.error ?? `Backend respondió ${response.status}`);
+  }
+  return response.json();
+}
 
 export async function fetchHealth(): Promise<HealthResponse> {
   const response = await fetch(`${API_URL}/health`);
@@ -21,4 +44,17 @@ export async function fetchSpots(sport: Sport, locality: string): Promise<SpotsR
     throw new Error(body?.error ?? `Backend respondió ${response.status}`);
   }
   return response.json();
+}
+
+export async function explainSpot(spot: ScoredSpot): Promise<SpotExplanation> {
+  const request: ExplainRequest = { sport: spot.sport, spotId: spot.id, name: spot.name, lat: spot.lat, lon: spot.lon };
+  return postJson<SpotExplanation>("/explain", request);
+}
+
+export async function askFollowUp(
+  groundingPayload: SpotGroundingPayload,
+  priorMessages: ChatMessage[],
+  question: string,
+): Promise<FollowUpResponse> {
+  return postJson<FollowUpResponse>("/explain/followup", { groundingPayload, priorMessages, question });
 }

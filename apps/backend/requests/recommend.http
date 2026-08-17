@@ -16,7 +16,47 @@ GET {{baseUrl}}/recommend?sport=running
 ### Deporte aún no soportado en la Fase 1 → 400
 GET {{baseUrl}}/recommend?sport=playa&locality=Vigo
 
-# Nota: este backend depende de nominatim.openstreetmap.org, overpass-api.de
-# y api.open-meteo.com. En el sandbox de Claude Code on the web estos hosts
-# están bloqueados por la política de red de la sesión — probar estas
-# peticiones en local o en un entorno con esos hosts permitidos.
+### Zonas de running con score, para el mapa (usa el spotId de aquí abajo)
+GET {{baseUrl}}/spots?sport=running&locality=A Coruña
+
+### Explicación IA de un spot concreto (requiere ANTHROPIC_API_KEY en .env)
+POST {{baseUrl}}/explain
+Content-Type: application/json
+
+{
+  "sport": "running",
+  "spotId": "way/12345",
+  "name": "Parque de Santa Margarita",
+  "lat": 43.3699,
+  "lon": -8.4064
+}
+
+### Pregunta de seguimiento sobre ese mismo spot (usa el groundingPayload
+### que devuelve /explain, tal cual, sin modificarlo)
+POST {{baseUrl}}/explain/followup
+Content-Type: application/json
+
+{
+  "groundingPayload": {
+    "sport": "running",
+    "spotName": "Parque de Santa Margarita",
+    "score": 82,
+    "scoreBand": "green",
+    "weather": {
+      "rainYesterdayMm": 2,
+      "rainTodayMm": 0,
+      "windAvgTodayKmh": 10,
+      "windMaxTodayKmh": 18,
+      "windDirectionMiddayDeg": 270,
+      "temperatureAvgTodayC": 17
+    }
+  },
+  "priorMessages": [],
+  "question": "¿hay zonas con sombra por la tarde?"
+}
+
+# Nota: este backend depende de nominatim.openstreetmap.org, overpass-api.de,
+# api.open-meteo.com y api.anthropic.com. En el sandbox de Claude Code on the
+# web los tres primeros están bloqueados por la política de red de la sesión,
+# y no hay ANTHROPIC_API_KEY configurada — probar estas peticiones en local
+# o en un entorno con esos hosts permitidos y la key rellenada en .env.

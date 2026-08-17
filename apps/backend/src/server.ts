@@ -2,6 +2,7 @@ import cors from "@fastify/cors";
 import Fastify from "fastify";
 import type { HealthResponse } from "@w-a/shared";
 
+import { registerExplainRoute } from "./routes/explain.js";
 import { registerRecommendRoute } from "./routes/recommend.js";
 import { registerSpotsRoute } from "./routes/spots.js";
 
@@ -17,6 +18,7 @@ app.get("/health", async (): Promise<HealthResponse> => {
 
 await registerRecommendRoute(app);
 await registerSpotsRoute(app);
+await registerExplainRoute(app);
 
 app
   .listen({ port: PORT, host: "0.0.0.0" })
