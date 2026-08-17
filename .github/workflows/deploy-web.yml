@@ -22,29 +22,6 @@ jobs:
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
 
-      # Instalamos nosotros mismos desde la raíz del monorepo (con acceso a
-      # los workspaces) en vez de dejar que "vercel build" reinstale por su
-      # cuenta: su instalación automática, restaurada desde la build cache
-      # remota de Vercel entre runs, se quedó pillada devolviendo siempre el
-      # mismo recuento de paquetes ("added 125 packages") incluso después de
-      # añadir client-only a apps/web/package.json — el árbol cacheado no se
-      # invalidaba. Con node_modules ya presente, "vercel build" detecta que
-      # existe y no vuelve a instalar por encima.
-      - name: Install dependencies
-        run: npm ci --legacy-peer-deps
-
-      # client-only es una dependencia implícita de Next (su output tracer la
-      # referencia siempre) que npm hoistea a node_modules de la raíz del
-      # monorepo. El paso de deploy de Vercel empaqueta la función serverless
-      # mirando solo dentro de apps/web (su Root Directory) y no la encuentra
-      # ahí, aunque exista en la raíz — falla con "File does not exist:
-      # node_modules/client-only/...". La copiamos dentro de apps/web para
-      # que quede alcanzable sin depender del hoisting.
-      - name: Ensure client-only is present inside apps/web
-        run: |
-          mkdir -p apps/web/node_modules/client-only
-          cp -r node_modules/client-only/. apps/web/node_modules/client-only/
-
       # Vincula (o crea) el proyecto de Vercel para apps/web. Si prefieres
       # fijarlo explícitamente en vez de re-vincular en cada run, añade los
       # secrets VERCEL_ORG_ID/VERCEL_PROJECT_ID y sustituye este paso por
@@ -57,9 +34,23 @@ jobs:
         working-directory: apps/web
         run: vercel pull --yes --environment=production --token=${{ secrets.vercel }}
 
+      # "vercel build" hace su propia instalación (workspace-aware, resuelve
+      # @w-a/shared bien) pero hoistea client-only — una dependencia implícita
+      # de Next que su output tracer siempre referencia — fuera de apps/web
+      # (a la raíz del monorepo). Vale para el build, pero el paso de deploy
+      # empaqueta la función serverless mirando solo dentro de apps/web (su
+      # Root Directory) y falla con "File does not exist:
+      # node_modules/client-only/...". Poner esto ANTES de "Build" no sirve:
+      # su instalación lo trata como sobrante y lo borra ("removed 1
+      # package"). Va después del build, justo antes del deploy.
       - name: Build
         working-directory: apps/web
         run: vercel build --prod --token=${{ secrets.vercel }}
+
+      - name: Ensure client-only is reachable from apps/web for the deploy step
+        run: |
+          mkdir -p apps/web/node_modules/client-only
+          cp -r node_modules/client-only/. apps/web/node_modules/client-only/
 
       - name: Deploy
         working-directory: apps/web
