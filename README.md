@@ -111,6 +111,14 @@ Sin estas variables configuradas, el resto de la app (mapa, cuestionario, tiempo
 funcionando con normalidad — la pestaña Favoritos simplemente avisa de que Supabase no está
 configurado en vez de fallar.
 
+## Onboarding y leyenda
+
+Primer uso: `OnboardingGate` (`src/components/OnboardingGate.tsx`) comprueba un flag en
+AsyncStorage y muestra una pantalla de bienvenida de 3 puntos (scoring por colores, cuestionario
+en lenguaje natural, favoritos) antes de entrar a la app — se guarda para no repetirla.
+`ScoreLegend` (verde/ámbar/rojo + qué significa cada uno) aparece junto a cualquier lista de
+resultados con pines coloreados (mapa y cuestionario).
+
 ## Plan de producto
 
 El desarrollo sigue un plan por fases (scaffold → meteo básico → scoring y mapa → explicación IA

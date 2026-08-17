@@ -15,6 +15,7 @@ import {
 import MapView, { Marker } from "react-native-maps";
 
 import { submitQuery } from "../../src/api";
+import { ScoreLegend } from "../../src/components/ScoreLegend";
 import { SpotDetailModal } from "../../src/components/SpotDetailModal";
 import { SportPin } from "../../src/components/SportPin";
 import { distanceKm, formatDistanceKm } from "../../src/distance";
@@ -122,6 +123,8 @@ export default function QueryScreen() {
                 ))}
               </MapView>
             )}
+
+            {result.spots.length > 0 && <ScoreLegend />}
 
             {result.spots.map((spot, index) => {
               const distanceLabel = distanceReference

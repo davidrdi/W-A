@@ -15,6 +15,7 @@ import MapView, { Marker } from "react-native-maps";
 import type { LatLon, ScoredSpot, Sport } from "@w-a/shared";
 
 import { fetchSpots } from "../../src/api";
+import { ScoreLegend } from "../../src/components/ScoreLegend";
 import { SpotDetailModal } from "../../src/components/SpotDetailModal";
 import { SportPin } from "../../src/components/SportPin";
 import { distanceKm, formatDistanceKm } from "../../src/distance";
@@ -104,6 +105,12 @@ export default function MapScreen() {
 
       <SpotDetailModal spot={selectedSpot} distanceLabel={selectedSpotDistanceLabel} onClose={() => setSelectedSpot(null)} />
 
+      {spots.length > 0 && (
+        <View style={styles.legendCard}>
+          <ScoreLegend />
+        </View>
+      )}
+
       <View style={styles.searchBar}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sportRow}>
           {SPORTS.map((s) => (
@@ -152,6 +159,20 @@ const styles = StyleSheet.create({
   },
   map: {
     flex: 1,
+  },
+  legendCard: {
+    position: "absolute",
+    bottom: 16,
+    left: 12,
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    shadowColor: "#000",
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
   },
   searchBar: {
     position: "absolute",
