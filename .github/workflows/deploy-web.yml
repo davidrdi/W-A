@@ -22,6 +22,17 @@ jobs:
       - name: Install Vercel CLI
         run: npm install --global vercel@latest
 
+      # Instalamos nosotros mismos desde la raíz del monorepo (con acceso a
+      # los workspaces) en vez de dejar que "vercel build" reinstale por su
+      # cuenta: su instalación automática, restaurada desde la build cache
+      # remota de Vercel entre runs, se quedó pillada devolviendo siempre el
+      # mismo recuento de paquetes ("added 125 packages") incluso después de
+      # añadir client-only a apps/web/package.json — el árbol cacheado no se
+      # invalidaba. Con node_modules ya presente, "vercel build" detecta que
+      # existe y no vuelve a instalar por encima.
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
       # Vincula (o crea) el proyecto de Vercel para apps/web. Si prefieres
       # fijarlo explícitamente en vez de re-vincular en cada run, añade los
       # secrets VERCEL_ORG_ID/VERCEL_PROJECT_ID y sustituye este paso por
