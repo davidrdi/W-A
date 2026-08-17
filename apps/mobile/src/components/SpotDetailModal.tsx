@@ -18,12 +18,13 @@ import { SCORE_BAND_COLOR } from "../mapIcons";
 
 interface Props {
   spot: ScoredSpot | null;
+  distanceLabel?: string;
   onClose: () => void;
 }
 
 type LoadState = { kind: "loading" } | { kind: "error"; message: string } | { kind: "ready" };
 
-export function SpotDetailModal({ spot, onClose }: Props) {
+export function SpotDetailModal({ spot, distanceLabel, onClose }: Props) {
   const [explanation, setExplanation] = useState<SpotExplanation | null>(null);
   const [loadState, setLoadState] = useState<LoadState>({ kind: "loading" });
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -77,7 +78,10 @@ export function SpotDetailModal({ spot, onClose }: Props) {
           keyboardVerticalOffset={40}
         >
           <View style={styles.header}>
-            <Text style={styles.title}>{spot?.name}</Text>
+            <View style={styles.titleBlock}>
+              <Text style={styles.title}>{spot?.name}</Text>
+              {distanceLabel && <Text style={styles.distance}>A {distanceLabel}</Text>}
+            </View>
             <Pressable onPress={onClose} hitSlop={12}>
               <Text style={styles.close}>Cerrar</Text>
             </Pressable>
@@ -161,13 +165,20 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start",
     marginBottom: 12,
+  },
+  titleBlock: {
+    flexShrink: 1,
+    gap: 2,
   },
   title: {
     fontSize: 18,
     fontWeight: "700",
-    flexShrink: 1,
+  },
+  distance: {
+    fontSize: 13,
+    color: "#52625A",
   },
   close: {
     color: "#235C4D",

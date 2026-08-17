@@ -51,6 +51,7 @@ describe("GET /recommend", () => {
     expect(response.statusCode).toBe(200);
     const body = response.json();
     expect(body.locality).toBe("A Coruña, Galicia, España");
+    expect(body.localityCenter).toEqual({ lat: 43.36, lon: -8.41 });
     expect(body.spots).toHaveLength(1);
     expect(body.spots[0].weather).toEqual(weatherFixture);
 

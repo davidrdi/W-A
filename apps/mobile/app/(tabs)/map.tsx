@@ -1,4 +1,5 @@
-import { useRef, useState } from "react";
+import * as Location from "expo-location";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -10,11 +11,12 @@ import {
   View,
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
-import type { ScoredSpot } from "@w-a/shared";
+import type { LatLon, ScoredSpot } from "@w-a/shared";
 
 import { fetchSpots } from "../../src/api";
 import { SpotDetailModal } from "../../src/components/SpotDetailModal";
 import { SportPin } from "../../src/components/SportPin";
+import { distanceKm, formatDistanceKm } from "../../src/distance";
 
 const SPAIN_REGION = {
   latitude: 40.2,
@@ -28,9 +30,25 @@ type SearchState = { kind: "idle" } | { kind: "loading" } | { kind: "error"; mes
 export default function MapScreen() {
   const [locality, setLocality] = useState("A Coruña");
   const [spots, setSpots] = useState<ScoredSpot[]>([]);
+  const [localityCenter, setLocalityCenter] = useState<LatLon | null>(null);
+  const [userLocation, setUserLocation] = useState<LatLon | null>(null);
   const [state, setState] = useState<SearchState>({ kind: "idle" });
   const [selectedSpot, setSelectedSpot] = useState<ScoredSpot | null>(null);
   const mapRef = useRef<MapView>(null);
+
+  // Ubicación real opcional: si el usuario da permiso, las distancias se
+  // calculan desde ahí; si no, se usa el centro de la localidad buscada
+  // (siempre disponible, sin pedir nada al usuario).
+  useEffect(() => {
+    (async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") return;
+      const position = await Location.getCurrentPositionAsync({});
+      setUserLocation({ lat: position.coords.latitude, lon: position.coords.longitude });
+    })();
+  }, []);
+
+  const distanceReference = userLocation ?? localityCenter;
 
   const search = async () => {
     if (!locality.trim()) return;
@@ -38,6 +56,7 @@ export default function MapScreen() {
     try {
       const result = await fetchSpots("running", locality.trim());
       setSpots(result.spots);
+      setLocalityCenter(result.localityCenter);
       setState({ kind: "done" });
 
       if (result.spots.length > 0) {
@@ -51,24 +70,34 @@ export default function MapScreen() {
     }
   };
 
+  const selectedSpotDistanceLabel = useMemo(() => {
+    if (!selectedSpot || !distanceReference) return undefined;
+    return formatDistanceKm(distanceKm(distanceReference, { lat: selectedSpot.lat, lon: selectedSpot.lon }));
+  }, [selectedSpot, distanceReference]);
+
   return (
     <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === "ios" ? "padding" : undefined}>
-      <MapView ref={mapRef} style={styles.map} initialRegion={SPAIN_REGION}>
-        {spots.map((spot) => (
-          <Marker
-            key={spot.id}
-            coordinate={{ latitude: spot.lat, longitude: spot.lon }}
-            title={spot.name}
-            description={`Puntuación ${spot.score}/100`}
-            tracksViewChanges={false}
-            onPress={() => setSelectedSpot(spot)}
-          >
-            <SportPin sport={spot.sport} scoreBand={spot.scoreBand} />
-          </Marker>
-        ))}
+      <MapView ref={mapRef} style={styles.map} initialRegion={SPAIN_REGION} showsUserLocation={userLocation !== null}>
+        {spots.map((spot) => {
+          const distanceLabel = distanceReference
+            ? formatDistanceKm(distanceKm(distanceReference, { lat: spot.lat, lon: spot.lon }))
+            : null;
+          return (
+            <Marker
+              key={spot.id}
+              coordinate={{ latitude: spot.lat, longitude: spot.lon }}
+              title={spot.name}
+              description={`Puntuación ${spot.score}/100${distanceLabel ? ` · a ${distanceLabel}` : ""}`}
+              tracksViewChanges={false}
+              onPress={() => setSelectedSpot(spot)}
+            >
+              <SportPin sport={spot.sport} scoreBand={spot.scoreBand} />
+            </Marker>
+          );
+        })}
       </MapView>
 
-      <SpotDetailModal spot={selectedSpot} onClose={() => setSelectedSpot(null)} />
+      <SpotDetailModal spot={selectedSpot} distanceLabel={selectedSpotDistanceLabel} onClose={() => setSelectedSpot(null)} />
 
       <View style={styles.searchBar}>
         <TextInput
@@ -89,6 +118,11 @@ export default function MapScreen() {
         {state.kind === "error" && <Text style={styles.error}>{state.message}</Text>}
         {state.kind === "done" && spots.length === 0 && (
           <Text style={styles.hint}>No se encontraron zonas de running en esa localidad.</Text>
+        )}
+        {state.kind === "done" && spots.length > 0 && (
+          <Text style={styles.hint}>
+            Distancias {userLocation ? "desde tu ubicación" : `desde el centro de ${locality.trim()}`}.
+          </Text>
         )}
       </View>
     </KeyboardAvoidingView>

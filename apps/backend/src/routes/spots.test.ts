@@ -53,6 +53,7 @@ describe("GET /spots", () => {
 
     expect(response.statusCode).toBe(200);
     const body = response.json();
+    expect(body.localityCenter).toEqual({ lat: 43.36, lon: -8.41 });
     expect(body.spots).toHaveLength(2);
     expect(body.spots[0]).toMatchObject({ id: "way/1", scoreBand: "green" });
     expect(body.spots[1]).toMatchObject({ id: "way/2", scoreBand: "red" });

@@ -26,9 +26,17 @@ export interface RecommendedSpot extends Spot {
   weather: WeatherSnapshot;
 }
 
+export interface LatLon {
+  lat: number;
+  lon: number;
+}
+
 export interface RecommendResponse {
   locality: string;
   sport: Sport;
+  /** Centro de la localidad resuelta por geocoding — punto de referencia
+   * para calcular distancia cuando no hay ubicación real del usuario. */
+  localityCenter: LatLon;
   spots: RecommendedSpot[];
 }
 
@@ -42,6 +50,7 @@ export interface ScoredSpot extends Spot {
 export interface SpotsResponse {
   locality: string;
   sport: Sport;
+  localityCenter: LatLon;
   spots: ScoredSpot[];
 }
 

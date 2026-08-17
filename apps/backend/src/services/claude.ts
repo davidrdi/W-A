@@ -10,7 +10,13 @@ trabajo es explicar en 1-3 frases, en español, por qué esa puntuación, citand
 explican (ej. "ha llovido 18mm ayer, probablemente haya barro en los tramos de tierra"). No
 inventes geografía ni datos meteorológicos que no estén en el payload — si te preguntan algo que
 no puedes responder con esos datos, dilo explícitamente en vez de inventar. Sé concreto y
-práctico, como alguien que conoce bien la zona.`;
+práctico, como alguien que conoce bien la zona.
+
+En las preguntas de seguimiento (chat), razona SOLO sobre la zona de este payload — no
+recomiendes ni menciones otras zonas, spots o localidades alternativas aunque te las pidan: no
+tienes sus datos ni sus coordenadas, y la app no podría mostrarlas en el mapa ni calcular su
+distancia. Si te preguntan por otra zona, explica que para eso hay que buscarla en el buscador o
+en el cuestionario de la app, donde sí aparecerá en el mapa con su distancia.`;
 
 // Cliente perezoso: si no hay ANTHROPIC_API_KEY el servidor debe poder
 // arrancar igualmente (solo falla al llamar de verdad a /explain).

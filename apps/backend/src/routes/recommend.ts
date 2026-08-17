@@ -23,9 +23,10 @@ export async function registerRecommendRoute(app: FastifyInstance) {
 
     const area = await resolveLocality(locality);
     const spots = await findRunningSpots(area.areaId);
+    const localityCenter = { lat: area.lat, lon: area.lon };
 
     if (spots.length === 0) {
-      const empty: RecommendResponse = { locality: area.displayName, sport, spots: [] };
+      const empty: RecommendResponse = { locality: area.displayName, sport, localityCenter, spots: [] };
       return empty;
     }
 
@@ -34,6 +35,7 @@ export async function registerRecommendRoute(app: FastifyInstance) {
     const response: RecommendResponse = {
       locality: area.displayName,
       sport,
+      localityCenter,
       spots: spots.map((spot, i) => ({ ...spot, weather: weatherSnapshots[i] })),
     };
     return response;
