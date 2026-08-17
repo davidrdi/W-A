@@ -12,6 +12,8 @@
     "test": "npm run test --workspace apps/backend"
   },
   "devDependencies": {
-    "expo": "~57.0.14"
+    "expo": "~57.0.14",
+    "react": "19.2.3",
+    "@types/react": "~19.2.2"
   }
 }

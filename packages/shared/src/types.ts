@@ -1,5 +1,20 @@
 export type Sport = "running" | "paseo" | "senderismo" | "bici" | "playa" | "surf" | "windsurf";
 
+// Deportes que comparten el mismo tipo de lugar en OSM (ver
+// apps/backend/src/services/spots.ts#SPORT_CATEGORY) — una misma playa
+// sirve para playa/surf/windsurf, un mismo parque para running/paseo. Sirve
+// para saber qué otros deportes tiene sentido puntuar en la misma zona.
+export const SPORT_GROUPS: readonly Sport[][] = [
+  ["running", "paseo"],
+  ["senderismo"],
+  ["bici"],
+  ["playa", "surf", "windsurf"],
+];
+
+export function sportsInSameGroup(sport: Sport): Sport[] {
+  return SPORT_GROUPS.find((group) => group.includes(sport)) ?? [sport];
+}
+
 export interface HealthResponse {
   status: "ok";
   service: string;
@@ -178,4 +193,14 @@ export interface CreateFavoriteRequest {
   sport: Sport;
   lat: number;
   lon: number;
+}
+
+export interface SportScore {
+  sport: Sport;
+  score: number;
+  scoreBand: ScoreBand;
+}
+
+export interface SpotScoresResponse {
+  scores: SportScore[];
 }

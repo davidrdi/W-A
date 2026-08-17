@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import type { ChatMessage, ScoredSpot, SpotAmenities, SpotExplanation } from "@w-a/shared";
+import { useCallback, useEffect, useState } from "react";
+import type { ChatMessage, ScoredSpot, SportScore, Sport, SpotAmenities, SpotExplanation } from "@w-a/shared";
 import {
   ActivityIndicator,
   FlatList,
@@ -13,9 +13,10 @@ import {
   View,
 } from "react-native";
 
-import { askFollowUp, explainSpot } from "../api";
+import { askFollowUp, explainSpot, fetchSpotScores } from "../api";
 import { useAuth } from "../auth";
 import { SCORE_BAND_COLOR } from "../mapIcons";
+import { ScoreRing } from "./ScoreRing";
 
 interface Props {
   spot: ScoredSpot | null;
@@ -32,15 +33,17 @@ export function SpotDetailModal({ spot, distanceLabel, onClose }: Props) {
   const [question, setQuestion] = useState("");
   const [asking, setAsking] = useState(false);
   const [togglingFavorite, setTogglingFavorite] = useState(false);
+  const [activeSport, setActiveSport] = useState<Sport | null>(null);
+  const [scores, setScores] = useState<SportScore[]>([]);
   const { session, isFavorite, toggleFavorite } = useAuth();
 
-  const favorited = spot ? isFavorite(spot.id, spot.sport) : false;
+  const favorited = spot && activeSport ? isFavorite(spot.id, activeSport) : false;
 
   const handleToggleFavorite = async () => {
-    if (!spot || togglingFavorite) return;
+    if (!spot || !activeSport || togglingFavorite) return;
     setTogglingFavorite(true);
     try {
-      await toggleFavorite(spot);
+      await toggleFavorite({ ...spot, sport: activeSport });
     } catch {
       // Silencioso: un fallo al guardar el favorito no debe romper el modal.
     } finally {
@@ -48,14 +51,13 @@ export function SpotDetailModal({ spot, distanceLabel, onClose }: Props) {
     }
   };
 
-  useEffect(() => {
-    if (!spot) return;
+  const loadExplanation = useCallback((targetSpot: ScoredSpot, sport: Sport) => {
     setExplanation(null);
     setMessages([]);
     setQuestion("");
     setLoadState({ kind: "loading" });
 
-    explainSpot(spot)
+    explainSpot({ ...targetSpot, sport })
       .then((result) => {
         setExplanation(result);
         setLoadState({ kind: "ready" });
@@ -63,7 +65,26 @@ export function SpotDetailModal({ spot, distanceLabel, onClose }: Props) {
       .catch((error) => {
         setLoadState({ kind: "error", message: error instanceof Error ? error.message : "No se pudo cargar" });
       });
-  }, [spot]);
+  }, []);
+
+  useEffect(() => {
+    if (!spot) return;
+    setActiveSport(spot.sport);
+    setScores([]);
+    // Otros deportes practicables en la misma zona (ej. una playa sirve
+    // para playa/surf/windsurf) — para los anillos de score. Un fallo aquí
+    // no debe bloquear la explicación principal.
+    fetchSpotScores(spot.sport, spot.lat, spot.lon)
+      .then((result) => setScores(result.scores))
+      .catch(() => {});
+    loadExplanation(spot, spot.sport);
+  }, [spot, loadExplanation]);
+
+  const handleSelectSport = (sport: Sport) => {
+    if (!spot || sport === activeSport) return;
+    setActiveSport(sport);
+    loadExplanation(spot, sport);
+  };
 
   const send = async () => {
     const trimmed = question.trim();
@@ -114,6 +135,21 @@ export function SpotDetailModal({ spot, distanceLabel, onClose }: Props) {
               </Pressable>
             </View>
           </View>
+
+          {scores.length > 1 && (
+            <View style={styles.ringsRow}>
+              {scores.map((s) => (
+                <ScoreRing
+                  key={s.sport}
+                  sport={s.sport}
+                  score={s.score}
+                  scoreBand={s.scoreBand}
+                  active={s.sport === activeSport}
+                  onPress={() => handleSelectSport(s.sport)}
+                />
+              ))}
+            </View>
+          )}
 
           {loadState.kind === "loading" && (
             <View style={styles.centered}>
@@ -244,6 +280,11 @@ const styles = StyleSheet.create({
   close: {
     color: "#235C4D",
     fontWeight: "600",
+  },
+  ringsRow: {
+    flexDirection: "row",
+    gap: 14,
+    marginBottom: 14,
   },
   centered: {
     paddingVertical: 32,

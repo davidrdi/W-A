@@ -10,6 +10,7 @@ import type {
   ScoredSpot,
   SpotExplanation,
   SpotGroundingPayload,
+  SpotScoresResponse,
   Sport,
   SpotsResponse,
   WeatherResponse,
@@ -83,6 +84,20 @@ export async function submitQuery(text: string): Promise<QueryResponse> {
 export async function fetchWeather(locality: string): Promise<WeatherResponse> {
   const url = new URL(`${API_URL}/weather`);
   url.searchParams.set("locality", locality);
+
+  const response = await fetch(url.toString());
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.error ?? `Backend respondió ${response.status}`);
+  }
+  return response.json();
+}
+
+export async function fetchSpotScores(sport: Sport, lat: number, lon: number): Promise<SpotScoresResponse> {
+  const url = new URL(`${API_URL}/spot-scores`);
+  url.searchParams.set("sport", sport);
+  url.searchParams.set("lat", String(lat));
+  url.searchParams.set("lon", String(lon));
 
   const response = await fetch(url.toString());
   if (!response.ok) {

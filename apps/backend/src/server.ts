@@ -8,6 +8,7 @@ import { registerInternalNotifyRoute } from "./routes/internalNotify.js";
 import { registerPushTokensRoute } from "./routes/pushTokens.js";
 import { registerQueryRoute } from "./routes/query.js";
 import { registerRecommendRoute } from "./routes/recommend.js";
+import { registerSpotScoresRoute } from "./routes/spotScores.js";
 import { registerSpotsRoute } from "./routes/spots.js";
 import { registerWeatherRoute } from "./routes/weather.js";
 
@@ -23,6 +24,7 @@ app.get("/health", async (): Promise<HealthResponse> => {
 
 await registerRecommendRoute(app);
 await registerSpotsRoute(app);
+await registerSpotScoresRoute(app);
 await registerExplainRoute(app);
 await registerWeatherRoute(app);
 await registerQueryRoute(app);

@@ -155,18 +155,36 @@ día se envíe push o no, para no recalcular dos veces si el job corre más de u
   archivo, no hay que tocar los servicios que lo usan. No se ha instalado el cliente porque no hay
   un Redis real corriendo contra el que probarlo.
 
-## Nota de compatibilidad: `expo` como devDependency en la raíz
+## Anillos de score multi-deporte
 
-`package.json` de la raíz del monorepo declara `expo` como devDependency aunque el código de la
-raíz no lo usa directamente. Es intencional: con solo `apps/mobile` dependiendo de `expo`, npm
-workspaces a veces hospeda `expo-notifications` en el `node_modules` raíz mientras deja `expo` y
-`expo-modules-core` anidados en `apps/mobile/node_modules` — un árbol inconsistente que rompe la
-resolución de tipos y el config plugin de `expo-notifications` (`Cannot find module
-'expo/config-plugins'`). Declarar `expo` también en la raíz fuerza a npm a hospedar todo junto de
-forma consistente. Si en el futuro aparece el mismo error con otro paquete `expo-*`, el arreglo es
-el mismo patrón: añadir `expo` (o el paquete conflictivo) como devDependency en la raíz y
-reinstalar limpio (`rm -rf node_modules apps/*/node_modules packages/*/node_modules && npm
-install`).
+Al tocar un pin, además de la explicación de ESE deporte, si el spot sirve para más de uno (una
+playa sirve para playa/surf/windsurf; un parque para running/paseo — ver `SPORT_GROUPS` en
+`packages/shared/src/types.ts`) se muestra una fila de anillos (`ScoreRing`, SVG con
+`react-native-svg`): 100% de aro relleno y en verde es el deporte recomendado ahí ahora mismo, y
+va vaciándose según baja el score de cada uno. Tocar un anillo cambia el deporte activo del modal
+(recalcula la explicación con `GET /explain` para ese deporte, en la misma zona). El backend
+(`GET /spot-scores`) puntúa todo el grupo con una sola llamada a meteo/marino, no una por deporte.
+
+## Nota de compatibilidad: paquetes duplicados por hoisting de npm
+
+`package.json` de la raíz declara `expo`, `react` y `@types/react` como devDependencies aunque el
+código de la raíz no los usa directamente. Es intencional: con estos paquetes declarados solo en
+`apps/mobile`, npm workspaces a veces hospeda un paquete que los necesita (`expo-notifications`,
+`react-native-svg`...) en el `node_modules` raíz mientras deja `expo`/`react`/`@types/react`
+anidados en `apps/mobile/node_modules` — un árbol inconsistente que rompe tanto la resolución de
+tipos de TypeScript como, en el caso de `expo-notifications`, su config plugin (`Cannot find
+module 'expo/config-plugins'`). Declarar el paquete conflictivo también en la raíz fuerza a npm a
+hospedar todo junto de forma consistente.
+
+Si en el futuro aparece el mismo patrón de error con otro paquete nuevo (típicamente `tsc` quejándose
+de que un componente "no es un JSX component válido", o Metro/`expo export` sin poder resolver un
+módulo), el arreglo es el mismo: añadir el paquete que falta como devDependency en la raíz y
+reinstalar limpio:
+
+```bash
+rm -rf node_modules apps/*/node_modules packages/*/node_modules
+npm install --legacy-peer-deps
+```
 
 ## Plan de producto
 
