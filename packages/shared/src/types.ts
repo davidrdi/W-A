@@ -31,3 +31,16 @@ export interface RecommendResponse {
   sport: Sport;
   spots: RecommendedSpot[];
 }
+
+export type ScoreBand = "green" | "amber" | "red";
+
+export interface ScoredSpot extends Spot {
+  score: number;
+  scoreBand: ScoreBand;
+}
+
+export interface SpotsResponse {
+  locality: string;
+  sport: Sport;
+  spots: ScoredSpot[];
+}

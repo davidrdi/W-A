@@ -37,7 +37,16 @@ Supabase). El móvil apunta al backend vía `EXPO_PUBLIC_API_URL` (por defecto
 
 ```bash
 npm run typecheck
+npm run test
 ```
+
+## Diseño de mapa
+
+Los pines del mapa reutilizan el lenguaje visual de [Trebo](https://github.com/davidrdi/trebo)
+(otra app del mismo autor): forma de lágrima (`border-radius 50% 50% 50% 0` + rotación),
+icono blanco de 20x20 dentro. Aquí el color del pin codifica el **score** de la zona
+(verde/ámbar/rojo) en vez del deporte — el deporte lo identifica el icono. Los SVG están en
+`apps/mobile/src/mapIcons.ts`; el de playa es nuevo, en ese mismo estilo.
 
 ## Plan de producto
 

@@ -3,6 +3,7 @@ import Fastify from "fastify";
 import type { HealthResponse } from "@w-a/shared";
 
 import { registerRecommendRoute } from "./routes/recommend.js";
+import { registerSpotsRoute } from "./routes/spots.js";
 
 const PORT = Number(process.env.PORT ?? 3000);
 
@@ -15,6 +16,7 @@ app.get("/health", async (): Promise<HealthResponse> => {
 });
 
 await registerRecommendRoute(app);
+await registerSpotsRoute(app);
 
 app
   .listen({ port: PORT, host: "0.0.0.0" })
