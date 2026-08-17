@@ -33,6 +33,18 @@ jobs:
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
 
+      # client-only es una dependencia implícita de Next (su output tracer la
+      # referencia siempre) que npm hoistea a node_modules de la raíz del
+      # monorepo. El paso de deploy de Vercel empaqueta la función serverless
+      # mirando solo dentro de apps/web (su Root Directory) y no la encuentra
+      # ahí, aunque exista en la raíz — falla con "File does not exist:
+      # node_modules/client-only/...". La copiamos dentro de apps/web para
+      # que quede alcanzable sin depender del hoisting.
+      - name: Ensure client-only is present inside apps/web
+        run: |
+          mkdir -p apps/web/node_modules/client-only
+          cp -r node_modules/client-only/. apps/web/node_modules/client-only/
+
       # Vincula (o crea) el proyecto de Vercel para apps/web. Si prefieres
       # fijarlo explícitamente en vez de re-vincular en cada run, añade los
       # secrets VERCEL_ORG_ID/VERCEL_PROJECT_ID y sustituye este paso por
