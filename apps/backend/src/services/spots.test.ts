@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { findRunningSpots } from "./spots.js";
+import { findSpots } from "./spots.js";
 
-describe("findRunningSpots", () => {
+describe("findSpots", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });
@@ -28,7 +28,7 @@ describe("findRunningSpots", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    const spots = await findRunningSpots(3_600_000_001, 5);
+    const spots = await findSpots("running", 3_600_000_101, 5);
 
     expect(spots).toHaveLength(2);
     expect(spots[0]).toMatchObject({
@@ -49,7 +49,7 @@ describe("findRunningSpots", () => {
     }));
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ elements }) }));
 
-    const spots = await findRunningSpots(3_600_000_002, 4);
+    const spots = await findSpots("senderismo", 3_600_000_102, 4);
 
     expect(spots).toHaveLength(4);
   });
@@ -57,6 +57,42 @@ describe("findRunningSpots", () => {
   it("lanza un error legible si Overpass responde con un status de error", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 429 }));
 
-    await expect(findRunningSpots(3_600_000_003)).rejects.toThrow("Overpass respondió 429");
+    await expect(findSpots("bici", 3_600_000_103)).rejects.toThrow("Overpass respondió 429");
+  });
+
+  it("usa un nombre de fallback distinto según la categoría (playa vs sendero)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          elements: [{ type: "way", id: 1, center: { lat: 1, lon: 1 }, tags: { natural: "beach" } }],
+        }),
+      }),
+    );
+
+    const spots = await findSpots("playa", 3_600_000_104);
+    expect(spots[0].name).toBe("Playa sin nombre");
+  });
+
+  it("comparte la caché de Overpass entre playa/surf/windsurf (misma categoría) pero etiqueta el sport pedido", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        elements: [{ type: "way", id: 42, center: { lat: 43.5, lon: -8.2 }, tags: { natural: "beach", name: "Praia" } }],
+      }),
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const areaId = 3_600_000_105;
+    const playaSpots = await findSpots("playa", areaId);
+    const surfSpots = await findSpots("surf", areaId);
+    const windsurfSpots = await findSpots("windsurf", areaId);
+
+    expect(playaSpots[0].sport).toBe("playa");
+    expect(surfSpots[0].sport).toBe("surf");
+    expect(windsurfSpots[0].sport).toBe("windsurf");
+    // Misma área + misma categoría (beach) → una sola llamada real a Overpass.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

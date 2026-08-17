@@ -13,7 +13,7 @@ interface Props {
 // igual que los marcadores de eventos de Trebo — solo que aquí el color
 // codifica el score de la zona, no el deporte (el deporte lo dice el icono).
 export function SportPin({ sport, scoreBand }: Props) {
-  const svg = SPORT_ICON_SVG[sport] ?? SPORT_ICON_SVG.running;
+  const svg = SPORT_ICON_SVG[sport];
   const color = SCORE_BAND_COLOR[scoreBand];
 
   return (

@@ -2,15 +2,17 @@ import type { FastifyInstance } from "fastify";
 import type { FollowUpResponse, SpotExplanation, SpotGroundingPayload } from "@w-a/shared";
 import { z } from "zod";
 
+import { SPORT_VALUES, isWaterSport } from "../lib/sport.js";
 import { askFollowUp, explainSpot } from "../services/claude.js";
+import { getMarineSnapshots } from "../services/marine.js";
 import { getWeatherSnapshots } from "../services/weather.js";
-import { scoreBandFor, scoreRunning } from "../scoring/rules.js";
+import { scoreBandFor, scoreLandSport, scoreWaterSport } from "../scoring/rules.js";
 
-// Fase 3: solo running, igual que /recommend y /spots. El score lo decide
-// SIEMPRE el backend (scoring/rules.ts) — a Claude solo se le pide que
-// explique en palabras un score que ya viene calculado, nunca que lo ponga.
+// El score lo decide SIEMPRE el backend (scoring/rules.ts) — a Claude solo
+// se le pide que explique en palabras un score que ya viene calculado,
+// nunca que lo ponga.
 const explainSchema = z.object({
-  sport: z.literal("running"),
+  sport: z.enum(SPORT_VALUES),
   spotId: z.string().min(1),
   name: z.string().min(1),
   lat: z.number(),
@@ -26,12 +28,19 @@ const weatherSchema = z.object({
   temperatureAvgTodayC: z.number(),
 });
 
+const marineSchema = z.object({
+  waveHeightAvgM: z.number(),
+  waveHeightMaxM: z.number(),
+  seaSurfaceTempC: z.number(),
+});
+
 const groundingPayloadSchema = z.object({
-  sport: z.literal("running"),
+  sport: z.enum(SPORT_VALUES),
   spotName: z.string(),
   score: z.number(),
   scoreBand: z.enum(["green", "amber", "red"]),
   weather: weatherSchema,
+  marine: marineSchema.optional(),
 });
 
 const followUpSchema = z.object({
@@ -49,13 +58,25 @@ export async function registerExplainRoute(app: FastifyInstance) {
     const { sport, name, lat, lon } = parsed.data;
 
     const [weather] = await getWeatherSnapshots([{ lat, lon }]);
-    const score = scoreRunning(weather);
-    const scoreBand = scoreBandFor(score);
 
-    const groundingPayload: SpotGroundingPayload = { sport, spotName: name, score, scoreBand, weather };
+    let groundingPayload: SpotGroundingPayload;
+    if (isWaterSport(sport)) {
+      const [marine] = await getMarineSnapshots([{ lat, lon }]);
+      const score = scoreWaterSport(sport, weather, marine);
+      groundingPayload = { sport, spotName: name, score, scoreBand: scoreBandFor(score), weather, marine };
+    } else {
+      const score = scoreLandSport(sport, weather);
+      groundingPayload = { sport, spotName: name, score, scoreBand: scoreBandFor(score), weather };
+    }
+
     const explanation = await explainSpot(groundingPayload);
 
-    const response: SpotExplanation = { score, scoreBand, ...explanation, groundingPayload };
+    const response: SpotExplanation = {
+      score: groundingPayload.score,
+      scoreBand: groundingPayload.scoreBand,
+      ...explanation,
+      groundingPayload,
+    };
     return response;
   });
 

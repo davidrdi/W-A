@@ -5,18 +5,20 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
-import type { LatLon, ScoredSpot } from "@w-a/shared";
+import type { LatLon, ScoredSpot, Sport } from "@w-a/shared";
 
 import { fetchSpots } from "../../src/api";
 import { SpotDetailModal } from "../../src/components/SpotDetailModal";
 import { SportPin } from "../../src/components/SportPin";
 import { distanceKm, formatDistanceKm } from "../../src/distance";
+import { SPORT_LABEL } from "../../src/mapIcons";
 
 const SPAIN_REGION = {
   latitude: 40.2,
@@ -25,9 +27,12 @@ const SPAIN_REGION = {
   longitudeDelta: 8,
 };
 
+const SPORTS: Sport[] = ["running", "paseo", "senderismo", "bici", "playa", "surf", "windsurf"];
+
 type SearchState = { kind: "idle" } | { kind: "loading" } | { kind: "error"; message: string } | { kind: "done" };
 
 export default function MapScreen() {
+  const [sport, setSport] = useState<Sport>("running");
   const [locality, setLocality] = useState("A Coruña");
   const [spots, setSpots] = useState<ScoredSpot[]>([]);
   const [localityCenter, setLocalityCenter] = useState<LatLon | null>(null);
@@ -54,7 +59,7 @@ export default function MapScreen() {
     if (!locality.trim()) return;
     setState({ kind: "loading" });
     try {
-      const result = await fetchSpots("running", locality.trim());
+      const result = await fetchSpots(sport, locality.trim());
       setSpots(result.spots);
       setLocalityCenter(result.localityCenter);
       setState({ kind: "done" });
@@ -62,7 +67,7 @@ export default function MapScreen() {
       if (result.spots.length > 0) {
         mapRef.current?.fitToCoordinates(
           result.spots.map((s) => ({ latitude: s.lat, longitude: s.lon })),
-          { edgePadding: { top: 80, right: 60, bottom: 80, left: 60 }, animated: true },
+          { edgePadding: { top: 130, right: 60, bottom: 80, left: 60 }, animated: true },
         );
       }
     } catch (error) {
@@ -100,6 +105,18 @@ export default function MapScreen() {
       <SpotDetailModal spot={selectedSpot} distanceLabel={selectedSpotDistanceLabel} onClose={() => setSelectedSpot(null)} />
 
       <View style={styles.searchBar}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sportRow}>
+          {SPORTS.map((s) => (
+            <Pressable
+              key={s}
+              style={[styles.sportChip, s === sport && styles.sportChipActive]}
+              onPress={() => setSport(s)}
+            >
+              <Text style={[styles.sportChipText, s === sport && styles.sportChipTextActive]}>{SPORT_LABEL[s]}</Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+
         <TextInput
           style={styles.input}
           value={locality}
@@ -112,12 +129,12 @@ export default function MapScreen() {
           {state.kind === "loading" ? (
             <ActivityIndicator color="#fff" />
           ) : (
-            <Text style={styles.buttonText}>Buscar zonas de running</Text>
+            <Text style={styles.buttonText}>Buscar zonas de {SPORT_LABEL[sport].toLowerCase()}</Text>
           )}
         </Pressable>
         {state.kind === "error" && <Text style={styles.error}>{state.message}</Text>}
         {state.kind === "done" && spots.length === 0 && (
-          <Text style={styles.hint}>No se encontraron zonas de running en esa localidad.</Text>
+          <Text style={styles.hint}>No se encontraron zonas de {SPORT_LABEL[sport].toLowerCase()} en esa localidad.</Text>
         )}
         {state.kind === "done" && spots.length > 0 && (
           <Text style={styles.hint}>
@@ -150,6 +167,27 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
     elevation: 4,
+  },
+  sportRow: {
+    gap: 6,
+    paddingBottom: 2,
+  },
+  sportChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: "#F2F4F1",
+  },
+  sportChipActive: {
+    backgroundColor: "#235C4D",
+  },
+  sportChipText: {
+    fontSize: 13,
+    color: "#17211A",
+    fontWeight: "600",
+  },
+  sportChipTextActive: {
+    color: "#fff",
   },
   input: {
     borderWidth: 1,

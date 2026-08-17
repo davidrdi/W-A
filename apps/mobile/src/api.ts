@@ -8,6 +8,7 @@ import type {
   SpotGroundingPayload,
   Sport,
   SpotsResponse,
+  WeatherResponse,
 } from "@w-a/shared";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:3000";
@@ -57,4 +58,16 @@ export async function askFollowUp(
   question: string,
 ): Promise<FollowUpResponse> {
   return postJson<FollowUpResponse>("/explain/followup", { groundingPayload, priorMessages, question });
+}
+
+export async function fetchWeather(locality: string): Promise<WeatherResponse> {
+  const url = new URL(`${API_URL}/weather`);
+  url.searchParams.set("locality", locality);
+
+  const response = await fetch(url.toString());
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.error ?? `Backend respondió ${response.status}`);
+  }
+  return response.json();
 }

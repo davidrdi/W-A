@@ -24,6 +24,8 @@ export interface WeatherSnapshot {
 
 export interface RecommendedSpot extends Spot {
   weather: WeatherSnapshot;
+  /** Solo presente para playa/surf/windsurf. */
+  marine?: MarineSnapshot;
 }
 
 export interface LatLon {
@@ -54,6 +56,12 @@ export interface SpotsResponse {
   spots: ScoredSpot[];
 }
 
+export interface MarineSnapshot {
+  waveHeightAvgM: number;
+  waveHeightMaxM: number;
+  seaSurfaceTempC: number;
+}
+
 // Datos ya calculados que se le pasan a Claude para que razone sobre ellos
 // (nunca para que invente geografía ni meteo). El cliente lo recibe y lo
 // reenvía tal cual en las preguntas de seguimiento, así el backend no
@@ -64,6 +72,8 @@ export interface SpotGroundingPayload {
   score: number;
   scoreBand: ScoreBand;
   weather: WeatherSnapshot;
+  /** Solo presente para playa/surf/windsurf. */
+  marine?: MarineSnapshot;
 }
 
 export interface SpotExplanation {
@@ -96,4 +106,12 @@ export interface FollowUpRequest {
 
 export interface FollowUpResponse {
   answer: string;
+}
+
+export interface WeatherResponse {
+  lat: number;
+  lon: number;
+  /** Solo presente si la consulta fue por nombre de localidad. */
+  locality?: string;
+  weather: WeatherSnapshot;
 }

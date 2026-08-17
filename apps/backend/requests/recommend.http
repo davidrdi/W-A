@@ -13,11 +13,24 @@ GET {{baseUrl}}/recommend?sport=running&locality=Santiago de Compostela
 ### Falta locality → 400
 GET {{baseUrl}}/recommend?sport=running
 
-### Deporte aún no soportado en la Fase 1 → 400
-GET {{baseUrl}}/recommend?sport=playa&locality=Vigo
+### Deporte desconocido → 400
+GET {{baseUrl}}/recommend?sport=futbol&locality=Vigo
 
 ### Zonas de running con score, para el mapa (usa el spotId de aquí abajo)
 GET {{baseUrl}}/spots?sport=running&locality=A Coruña
+
+### Playa/surf/windsurf: mismas playas (natural=beach), scoring distinto por deporte
+GET {{baseUrl}}/spots?sport=playa&locality=Vigo
+GET {{baseUrl}}/spots?sport=surf&locality=Vigo
+GET {{baseUrl}}/spots?sport=windsurf&locality=Vigo
+
+### Senderismo y bici
+GET {{baseUrl}}/spots?sport=senderismo&locality=Cangas%20de%20On%C3%ADs
+GET {{baseUrl}}/spots?sport=bici&locality=Sevilla
+
+### Consulta general del tiempo — sin Overpass ni IA, por localidad o por coordenadas
+GET {{baseUrl}}/weather?locality=A Coruña
+GET {{baseUrl}}/weather?lat=43.3699&lon=-8.4064
 
 ### Explicación IA de un spot concreto (requiere ANTHROPIC_API_KEY en .env)
 POST {{baseUrl}}/explain
@@ -29,6 +42,18 @@ Content-Type: application/json
   "name": "Parque de Santa Margarita",
   "lat": 43.3699,
   "lon": -8.4064
+}
+
+### Explicación IA de una playa/surf (incluye datos marinos en el payload)
+POST {{baseUrl}}/explain
+Content-Type: application/json
+
+{
+  "sport": "surf",
+  "spotId": "way/98765",
+  "name": "Praia de Riazor",
+  "lat": 43.3699,
+  "lon": -8.4131
 }
 
 ### Pregunta de seguimiento sobre ese mismo spot (usa el groundingPayload
@@ -56,7 +81,8 @@ Content-Type: application/json
 }
 
 # Nota: este backend depende de nominatim.openstreetmap.org, overpass-api.de,
-# api.open-meteo.com y api.anthropic.com. En el sandbox de Claude Code on the
-# web los tres primeros están bloqueados por la política de red de la sesión,
-# y no hay ANTHROPIC_API_KEY configurada — probar estas peticiones en local
-# o en un entorno con esos hosts permitidos y la key rellenada en .env.
+# api.open-meteo.com, marine-api.open-meteo.com y api.anthropic.com. En el
+# sandbox de Claude Code on the web los cuatro primeros están bloqueados por
+# la política de red de la sesión, y no hay ANTHROPIC_API_KEY configurada —
+# probar estas peticiones en local o en un entorno con esos hosts permitidos
+# y la key rellenada en .env.

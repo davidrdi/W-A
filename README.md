@@ -48,6 +48,16 @@ icono blanco de 20x20 dentro. Aquí el color del pin codifica el **score** de la
 (verde/ámbar/rojo) en vez del deporte — el deporte lo identifica el icono. Los SVG están en
 `apps/mobile/src/mapIcons.ts`; el de playa es nuevo, en ese mismo estilo.
 
+## Deportes soportados
+
+`running`, `paseo`, `senderismo`, `bici`, `playa`, `surf`, `windsurf` — los tres últimos comparten
+la búsqueda de spots en Overpass (todos son `natural=beach`) pero tienen scoring distinto
+(`apps/backend/src/scoring/rules.ts`) y usan además datos marinos (Open-Meteo Marine API: oleaje,
+temperatura del mar) además de la meteo normal. Cada deporte de tierra tiene sus propios pesos de
+penalización (ej. senderismo penaliza el barro de ayer más que running; bici penaliza más el firme
+mojado de hoy). Consulta general del tiempo (sin recomendación de zona) en `GET /weather`, por
+localidad o por coordenadas.
+
 ## Plan de producto
 
 El desarrollo sigue un plan por fases (scaffold → meteo básico → scoring y mapa → explicación IA

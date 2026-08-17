@@ -4,12 +4,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../services/weather.js", () => ({
   getWeatherSnapshots: vi.fn(),
 }));
+vi.mock("../services/marine.js", () => ({
+  getMarineSnapshots: vi.fn(),
+}));
 vi.mock("../services/claude.js", () => ({
   explainSpot: vi.fn(),
   askFollowUp: vi.fn(),
 }));
 
 import { askFollowUp, explainSpot } from "../services/claude.js";
+import { getMarineSnapshots } from "../services/marine.js";
 import { getWeatherSnapshots } from "../services/weather.js";
 import { registerExplainRoute } from "./explain.js";
 
@@ -65,6 +69,37 @@ describe("POST /explain", () => {
 
     expect(response.statusCode).toBe(400);
     expect(explainSpot).not.toHaveBeenCalled();
+  });
+
+  it("para un deporte de agua, pide datos marinos y los incluye en el grounding payload", async () => {
+    vi.mocked(getWeatherSnapshots).mockResolvedValue([CLEAR_DAY]);
+    vi.mocked(getMarineSnapshots).mockResolvedValue([
+      { waveHeightAvgM: 1.2, waveHeightMaxM: 1.5, seaSurfaceTempC: 18 },
+    ]);
+    vi.mocked(explainSpot).mockResolvedValue({
+      headline: "Buenas olas hoy",
+      reasoning: "Oleaje en torno a 1.2m, aprovechable.",
+      cautions: [],
+    });
+
+    const app = Fastify();
+    await registerExplainRoute(app);
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/explain",
+      payload: { sport: "surf", spotId: "way/9", name: "Praia de Riazor", lat: 43.37, lon: -8.41 },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().groundingPayload.marine).toEqual({
+      waveHeightAvgM: 1.2,
+      waveHeightMaxM: 1.5,
+      seaSurfaceTempC: 18,
+    });
+    expect(explainSpot).toHaveBeenCalledWith(
+      expect.objectContaining({ marine: { waveHeightAvgM: 1.2, waveHeightMaxM: 1.5, seaSurfaceTempC: 18 } }),
+    );
   });
 });
 
