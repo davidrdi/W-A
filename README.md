@@ -72,7 +72,9 @@ Actions).
 
 1. Genera un token en [vercel.com/account/tokens](https://vercel.com/account/tokens).
 2. En GitHub: **Settings → Secrets and variables → Actions → New repository secret** → nombre
-   `VERCEL_TOKEN`, valor el token.
+   `vercel`, valor el token (el workflow lo lee como `secrets.vercel` — si prefieres el nombre
+   convencional `VERCEL_TOKEN`, créalo así y actualiza la referencia en
+   `.github/workflows/deploy-web.yml`).
 3. Haz push a `main` o a esta rama con cambios en `apps/web/` o `packages/shared/` — el workflow
    `.github/workflows/deploy-web.yml` vincula el proyecto, hace build y despliega a producción
    automáticamente. Primer run: crea el proyecto en Vercel él solo (`vercel link --yes`).
