@@ -1,0 +1,17 @@
+node_modules/
+.env
+.env.local
+
+# Expo
+apps/mobile/.expo/
+apps/mobile/dist/
+apps/mobile/web-build/
+apps/mobile/*.p8
+apps/mobile/*.mobileprovision
+
+# Backend
+apps/backend/dist/
+
+# OS / editors
+.DS_Store
+*.log

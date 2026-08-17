@@ -1,0 +1,13 @@
+{
+  "name": "w-a",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "backend:dev": "npm run dev --workspace apps/backend",
+    "mobile:start": "npm run start --workspace apps/mobile",
+    "typecheck": "npm run typecheck --workspace apps/backend && tsc --noEmit -p apps/mobile && tsc --noEmit -p packages/shared"
+  }
+}
