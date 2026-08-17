@@ -68,22 +68,24 @@ siguen consumiendo `src/index.ts` sin tocar, no hay build que mantener sincroniz
 GitHub (para el deploy de Vercel) o en el dashboard de Render (que despliega solo, sin GitHub
 Actions).
 
-### apps/web → Vercel (automático vía GitHub Actions)
+### apps/web → Vercel (automático, sin GitHub Actions)
 
-1. Genera un token en [vercel.com/account/tokens](https://vercel.com/account/tokens).
-2. En GitHub: **Settings → Secrets and variables → Actions → New repository secret** → nombre
-   `vercel`, valor el token (el workflow lo lee como `secrets.vercel` — si prefieres el nombre
-   convencional `VERCEL_TOKEN`, créalo así y actualiza la referencia en
-   `.github/workflows/deploy-web.yml`).
-3. Haz push a `main` o a esta rama con cambios en `apps/web/` o `packages/shared/` — el workflow
-   `.github/workflows/deploy-web.yml` corre `vercel deploy --prod` desde `apps/web`, que vincula
-   (o crea) el proyecto y despliega. El build ocurre en la propia infraestructura de Vercel, no en
-   el runner de GitHub — es el camino recomendado para monorepos con npm workspaces (evita tener
-   que reproducir a mano cómo Vercel resuelve dependencias hoisteadas a la raíz del monorepo).
-4. Una vez creado el proyecto, entra en Vercel → tu proyecto → **Settings → Environment
-   Variables** y añade `NEXT_PUBLIC_API_URL` apuntando a la URL de Render del paso siguiente
-   (ej. `https://w-a-backend.onrender.com`) — sin esto, la web no encuentra el backend en
-   producción. Vuelve a desplegar (o re-ejecuta el workflow) tras añadirla.
+Igual que Render: la integración nativa de Vercel con GitHub clona el repo entero y entiende
+monorepos (workspaces de npm) de fábrica. Se probó primero con un workflow de GitHub Actions
+corriendo `vercel deploy`/`vercel build` por CLI — falló repetidamente porque, subido así, Vercel
+solo ve los archivos de `apps/web` (no la raíz del monorepo ni `packages/shared`), y por separado
+porque su empaquetado de la función serverless no encontraba dependencias hoisteadas fuera de
+`apps/web`. La integración por GitHub no tiene ese problema: build y deploy corren en la propia
+infraestructura de Vercel con el repo completo.
+
+1. [vercel.com](https://vercel.com) → **Add New → Project** → importa el repo `davidrdi/w-a`.
+2. **Root Directory**: `apps/web` (Vercel detecta automáticamente que es un monorepo de npm
+   workspaces y instala desde la raíz antes de compilar solo `apps/web`).
+3. Framework preset: Next.js (autodetectado).
+4. **Environment Variables** → añade `NEXT_PUBLIC_API_URL` apuntando a la URL de Render del paso
+   siguiente (ej. `https://w-a-backend.onrender.com`) — sin esto, la web no encuentra el backend
+   en producción.
+5. Deploy. A partir de aquí, cada push a la rama conectada despliega solo.
 
 ### apps/backend → Render (automático, sin GitHub Actions)
 
