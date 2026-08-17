@@ -3,6 +3,7 @@ import Fastify from "fastify";
 import type { HealthResponse } from "@w-a/shared";
 
 import { registerExplainRoute } from "./routes/explain.js";
+import { registerQueryRoute } from "./routes/query.js";
 import { registerRecommendRoute } from "./routes/recommend.js";
 import { registerSpotsRoute } from "./routes/spots.js";
 import { registerWeatherRoute } from "./routes/weather.js";
@@ -21,6 +22,7 @@ await registerRecommendRoute(app);
 await registerSpotsRoute(app);
 await registerExplainRoute(app);
 await registerWeatherRoute(app);
+await registerQueryRoute(app);
 
 app
   .listen({ port: PORT, host: "0.0.0.0" })

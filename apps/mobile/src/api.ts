@@ -3,6 +3,7 @@ import type {
   ExplainRequest,
   FollowUpResponse,
   HealthResponse,
+  QueryResponse,
   ScoredSpot,
   SpotExplanation,
   SpotGroundingPayload,
@@ -65,6 +66,10 @@ export async function askFollowUp(
   question: string,
 ): Promise<FollowUpResponse> {
   return postJson<FollowUpResponse>("/explain/followup", { groundingPayload, priorMessages, question });
+}
+
+export async function submitQuery(text: string): Promise<QueryResponse> {
+  return postJson<QueryResponse>("/query", { text });
 }
 
 export async function fetchWeather(locality: string): Promise<WeatherResponse> {

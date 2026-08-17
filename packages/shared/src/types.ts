@@ -126,3 +126,34 @@ export interface WeatherResponse {
   locality?: string;
   weather: WeatherSnapshot;
 }
+
+// Preferencias que el cuestionario extrae del texto libre, además de
+// deporte y localidad. Todo opcional: ausencia de filtro = sin restricción.
+export interface QueryFilters {
+  requireDogsAllowed?: boolean;
+  requireNaturist?: boolean;
+  excludeNaturist?: boolean;
+}
+
+export interface QueryIntent {
+  sport: Sport;
+  /** Texto de localidad tal como Claude lo interpretó, para geocodificar. */
+  localityText: string;
+  filters: QueryFilters;
+}
+
+export interface QueryRequest {
+  text: string;
+}
+
+export interface RankedSpot extends ScoredSpot {
+  headline: string;
+  reasoning: string;
+}
+
+export interface QueryResponse {
+  intent: QueryIntent;
+  locality: string;
+  localityCenter: LatLon;
+  spots: RankedSpot[];
+}

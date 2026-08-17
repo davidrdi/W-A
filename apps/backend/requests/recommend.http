@@ -80,6 +80,30 @@ Content-Type: application/json
   "question": "¿hay zonas con sombra por la tarde?"
 }
 
+### Cuestionario en lenguaje natural (requiere ANTHROPIC_API_KEY en .env)
+POST {{baseUrl}}/query
+Content-Type: application/json
+
+{
+  "text": "quiero playa en el sur de Galicia, que admita perros"
+}
+
+### Otro ejemplo — pide explícitamente evitar trail (Claude debe elegir sport=running, no senderismo)
+POST {{baseUrl}}/query
+Content-Type: application/json
+
+{
+  "text": "quiero correr en Coruña sin hacer trail"
+}
+
+### Texto demasiado corto → 400
+POST {{baseUrl}}/query
+Content-Type: application/json
+
+{
+  "text": "a"
+}
+
 # Nota: este backend depende de nominatim.openstreetmap.org, overpass-api.de,
 # api.open-meteo.com, marine-api.open-meteo.com y api.anthropic.com. En el
 # sandbox de Claude Code on the web los cuatro primeros están bloqueados por

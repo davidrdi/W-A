@@ -58,6 +58,24 @@ penalización (ej. senderismo penaliza el barro de ayer más que running; bici p
 mojado de hoy). Consulta general del tiempo (sin recomendación de zona) en `GET /weather`, por
 localidad o por coordenadas.
 
+## Cuestionario en lenguaje natural
+
+`POST /query` con `{ text: "quiero playa en el sur de Galicia que admita perros" }`:
+
+1. Claude Haiku (`services/claude.ts#parseQueryIntent`) extrae `{sport, localityText, filters}` — barato,
+   solo interpreta intención, no razona sobre meteo.
+2. Se geocodifica `localityText` igual que en `/spots` (límite administrativo real).
+3. Se buscan spots del deporte, se filtran por `filters` (amenidades) — solo el filtro `requireNaturist`
+   es estricto; los demás excluyen únicamente cuando OSM dice explícitamente lo contrario, porque exigir
+   confirmación positiva dejaría casi todo fuera (la mayoría de spots no tienen esos tags).
+4. Se enriquecen los candidatos (meteo + marino si aplica) y se puntúan con las mismas reglas deterministas
+   de `/spots`.
+5. Claude Opus (`rankSpots`) los ordena de mejor a peor ajuste con un titular + explicación cada uno —
+   nunca decide el score, solo explica el orden.
+
+Limitación conocida: para regiones compuestas ("sur de Galicia") Claude elige la localidad real más
+razonable dentro de esa zona, no hay un gazetteer de "sur/norte de X" — documentado en el plan de producto.
+
 ## Plan de producto
 
 El desarrollo sigue un plan por fases (scaffold → meteo básico → scoring y mapa → explicación IA
