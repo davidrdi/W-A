@@ -152,11 +152,56 @@ describe("rankSpots", () => {
       { spotId: "way/2", headline: "La mejor hoy", reasoning: "Sin viento y con oleaje suave." },
       { spotId: "way/1", headline: "Segunda opción", reasoning: "Algo más de viento." },
     ]);
+    // El ranking va en el tier Sonnet, no en el modelo grande.
+    expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({ model: "claude-sonnet-5" }));
   });
 
   it("lanza un error legible si Claude no devuelve tool_use", async () => {
     mockCreate.mockResolvedValue({ content: [{ type: "text", text: "no debería pasar" }] });
 
     await expect(rankSpots("texto", "running", [])).rejects.toThrow("Claude no devolvió un ranking estructurado");
+  });
+});
+
+describe("logging de usage", () => {
+  beforeEach(() => {
+    mockCreate.mockReset();
+  });
+
+  it("emite una línea claude_usage con tokens y coste estimado por llamada", async () => {
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    mockCreate.mockResolvedValue({
+      content: [{ type: "tool_use", name: "rankear_zonas", input: { rankings: [] } }],
+      usage: { input_tokens: 1000, output_tokens: 500, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 },
+    });
+
+    await rankSpots("texto", "running", []);
+
+    expect(logSpy).toHaveBeenCalledTimes(1);
+    expect(JSON.parse(logSpy.mock.calls[0][0] as string)).toEqual({
+      event: "claude_usage",
+      operation: "rankSpots",
+      model: "claude-sonnet-5",
+      inputTokens: 1000,
+      outputTokens: 500,
+      cacheCreationInputTokens: 0,
+      cacheReadInputTokens: 0,
+      // 1000 * $3/1M + 500 * $15/1M
+      estimatedCostUsd: 0.0105,
+    });
+
+    logSpy.mockRestore();
+  });
+
+  it("no rompe si la respuesta no trae usage", async () => {
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    mockCreate.mockResolvedValue({
+      content: [{ type: "tool_use", name: "rankear_zonas", input: { rankings: [] } }],
+    });
+
+    await expect(rankSpots("texto", "running", [])).resolves.toEqual([]);
+    expect(logSpy).not.toHaveBeenCalled();
+
+    logSpy.mockRestore();
   });
 });

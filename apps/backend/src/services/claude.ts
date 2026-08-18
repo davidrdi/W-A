@@ -18,6 +18,61 @@ const MODEL = "claude-opus-5";
 // razonar sobre meteo. La calidad de la explicación (donde importa el
 // diferencial del producto) usa siempre el modelo grande.
 const INTENT_MODEL = "claude-haiku-4-5-20251001";
+// El ranking es la llamada más cara del producto (manda todos los candidatos
+// enriquecidos en el prompt) y la tarea es de ordenación + resumen sobre datos
+// ya calculados, no de razonamiento fino: el tier Sonnet la resuelve igual de
+// bien a menos de la mitad de coste que Opus.
+const RANK_MODEL = "claude-sonnet-5";
+
+// $/1M tokens (tarifas públicas de la API de Anthropic). Solo se usan para la
+// estimación de coste que va al log — la factura real manda. Sonnet 5 tiene
+// precio de lanzamiento más bajo hasta el 31/08/2026; aquí se deja la tarifa
+// estándar para no infraestimar.
+const PRICING_PER_MTOK: Record<string, { input: number; output: number }> = {
+  "claude-opus-5": { input: 5, output: 25 },
+  "claude-sonnet-5": { input: 3, output: 15 },
+  "claude-haiku-4-5-20251001": { input: 1, output: 5 },
+};
+
+interface UsageLike {
+  input_tokens?: number;
+  output_tokens?: number;
+  cache_creation_input_tokens?: number | null;
+  cache_read_input_tokens?: number | null;
+}
+
+function estimateCostUsd(model: string, usage: UsageLike): number | null {
+  const price = PRICING_PER_MTOK[model];
+  if (!price) return null;
+  const input = usage.input_tokens ?? 0;
+  const output = usage.output_tokens ?? 0;
+  const cacheWrite = usage.cache_creation_input_tokens ?? 0;
+  const cacheRead = usage.cache_read_input_tokens ?? 0;
+  // Escribir en caché cuesta ~1.25x el input; leer de caché ~0.1x.
+  const usd =
+    (input * price.input + cacheWrite * price.input * 1.25 + cacheRead * price.input * 0.1 + output * price.output) /
+    1_000_000;
+  return Number(usd.toFixed(6));
+}
+
+// Una línea JSON por llamada al API, a stdout (donde ya escribe el logger de
+// Fastify). Sirve para medir con datos reales: agregando por "operation" y
+// "model" sale el coste por consulta sin tocar la consola de Anthropic.
+function logUsage(operation: string, model: string, usage: UsageLike | undefined): void {
+  if (!usage) return;
+  console.log(
+    JSON.stringify({
+      event: "claude_usage",
+      operation,
+      model,
+      inputTokens: usage.input_tokens ?? 0,
+      outputTokens: usage.output_tokens ?? 0,
+      cacheCreationInputTokens: usage.cache_creation_input_tokens ?? 0,
+      cacheReadInputTokens: usage.cache_read_input_tokens ?? 0,
+      estimatedCostUsd: estimateCostUsd(model, usage),
+    }),
+  );
+}
 
 const SYSTEM_PROMPT = `Eres el asistente de una app que recomienda dónde practicar deporte al
 aire libre en España. Se te da un payload JSON con datos reales ya calculados (meteo de hoy,
@@ -78,6 +133,7 @@ export async function explainSpot(payload: SpotGroundingPayload): Promise<Explan
     tool_choice: { type: "tool", name: EXPLAIN_TOOL.name },
     messages: [{ role: "user", content: JSON.stringify(payload) }],
   });
+  logUsage("explainSpot", MODEL, message.usage);
 
   const toolUse = message.content.find((block) => block.type === "tool_use");
   if (!toolUse || toolUse.type !== "tool_use") {
@@ -102,6 +158,7 @@ export async function askFollowUp(
       { role: "user", content: question },
     ],
   });
+  logUsage("askFollowUp", MODEL, message.usage);
 
   const textBlock = message.content.find((block) => block.type === "text");
   if (!textBlock || textBlock.type !== "text") {
@@ -160,6 +217,7 @@ export async function parseQueryIntent(text: string): Promise<ParsedIntent> {
     tool_choice: { type: "tool", name: INTENT_TOOL.name },
     messages: [{ role: "user", content: text }],
   });
+  logUsage("parseQueryIntent", INTENT_MODEL, message.usage);
 
   const toolUse = message.content.find((block) => block.type === "tool_use");
   if (!toolUse || toolUse.type !== "tool_use") {
@@ -237,13 +295,14 @@ export async function rankSpots(
   candidates: RankingCandidate[],
 ): Promise<RankingResult[]> {
   const message = await getClient().messages.create({
-    model: MODEL,
+    model: RANK_MODEL,
     max_tokens: 1500,
     system: RANK_SYSTEM_PROMPT,
     tools: [RANK_TOOL],
     tool_choice: { type: "tool", name: RANK_TOOL.name },
     messages: [{ role: "user", content: JSON.stringify({ request: originalText, sport, candidates }) }],
   });
+  logUsage("rankSpots", RANK_MODEL, message.usage);
 
   const toolUse = message.content.find((block) => block.type === "tool_use");
   if (!toolUse || toolUse.type !== "tool_use") {

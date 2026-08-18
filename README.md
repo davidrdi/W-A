@@ -140,8 +140,15 @@ localidad o por coordenadas.
    confirmación positiva dejaría casi todo fuera (la mayoría de spots no tienen esos tags).
 4. Se enriquecen los candidatos (meteo + marino si aplica) y se puntúan con las mismas reglas deterministas
    de `/spots`.
-5. Claude Opus (`rankSpots`) los ordena de mejor a peor ajuste con un titular + explicación cada uno —
-   nunca decide el score, solo explica el orden.
+5. Claude Sonnet (`rankSpots`) los ordena de mejor a peor ajuste con un titular + explicación cada uno —
+   nunca decide el score, solo explica el orden. Es la llamada con el prompt más grande (todos los
+   candidatos enriquecidos), y al ser ordenar + resumir sobre datos ya calculados no necesita el modelo
+   grande: en Sonnet cuesta bastante menos con la misma calidad percibida.
+
+Cada llamada al API escribe a stdout una línea `{"event":"claude_usage",...}` con `inputTokens`,
+`outputTokens`, tokens de caché y `estimatedCostUsd`, etiquetada por `operation` y `model`. Agregando
+esas líneas sale el coste real por consulta (las tarifas usadas para la estimación están en
+`services/claude.ts`; la factura de la consola de Anthropic sigue siendo la fuente de verdad).
 
 Limitación conocida: para regiones compuestas ("sur de Galicia") Claude elige la localidad real más
 razonable dentro de esa zona, no hay un gazetteer de "sur/norte de X" — documentado en el plan de producto.
