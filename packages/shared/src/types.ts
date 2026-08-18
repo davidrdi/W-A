@@ -142,35 +142,55 @@ export interface WeatherResponse {
   weather: WeatherSnapshot;
 }
 
-// Preferencias que el cuestionario extrae del texto libre, además de
-// deporte y localidad. Todo opcional: ausencia de filtro = sin restricción.
-export interface QueryFilters {
-  requireDogsAllowed?: boolean;
-  requireNaturist?: boolean;
-  excludeNaturist?: boolean;
+// Las dos "versiones" del mapa de zonas: condiciones para hacer deporte en
+// la costa/mar o en tierra. No son deportes: son el contexto sobre el que se
+// puntúa (ver scoring/rules.ts#scoreZone) y determinan qué deportes se
+// listan al abrir una zona.
+export type ZoneMode = "mar" | "tierra";
+
+/**
+ * Nivel de agregación de los chips del mapa, derivado del zoom: poco zoom
+ * enseña una provincia, zoom medio un municipio y mucho zoom una zona
+ * dentro de la ciudad (barrio/distrito).
+ */
+export type ZoneLevel = "provincia" | "municipio" | "local";
+
+export interface ZoneChip {
+  /** "provincia/a-coruna" (tabla estática) o "relation/349055" / "node/123" (OSM). */
+  id: string;
+  name: string;
+  level: ZoneLevel;
+  /**
+   * Punto que se puntúa y donde se ancla el chip. En modo mar NO es el
+   * centro geométrico de la zona sino un punto de costa (una playa real o,
+   * a nivel provincia, un punto de mar representativo): la meteo marina en
+   * el centro de la provincia no existe.
+   */
+  lat: number;
+  lon: number;
+  score: number;
+  scoreBand: ScoreBand;
 }
 
-export interface QueryIntent {
-  sport: Sport;
-  /** Texto de localidad tal como Claude lo interpretó, para geocodificar. */
-  localityText: string;
-  filters: QueryFilters;
+export interface ZonesResponse {
+  mode: ZoneMode;
+  /** Nivel realmente devuelto: puede ser menos fino que el pedido si OSM no
+   * tiene zonas de ese nivel en el área visible. */
+  level: ZoneLevel;
+  zones: ZoneChip[];
 }
 
-export interface QueryRequest {
-  text: string;
-}
-
-export interface RankedSpot extends ScoredSpot {
-  headline: string;
-  reasoning: string;
-}
-
-export interface QueryResponse {
-  intent: QueryIntent;
-  locality: string;
-  localityCenter: LatLon;
-  spots: RankedSpot[];
+export interface ZoneDetailResponse {
+  zone: ZoneChip;
+  weather: WeatherSnapshot;
+  /** Solo en modo mar. */
+  marine?: MarineSnapshot;
+  /** Deportes del modo, de mejor a peor encaje con las condiciones de hoy. */
+  sportFits: SportScore[];
+  /** Mejores sitios concretos dentro de la zona (de mejor a peor). */
+  best: ScoredSpot[];
+  /** Peores sitios de la zona; vacío si no hay suficientes para distinguir. */
+  worst: ScoredSpot[];
 }
 
 export interface Favorite {

@@ -2,21 +2,21 @@
 
 import { useState } from "react";
 
-import { BuscarTab } from "../components/BuscarTab";
 import { FavoritosTab } from "../components/FavoritosTab";
 import { Header } from "../components/Header";
 import { MapaTab } from "../components/MapaTab";
+import { ZonasTab } from "../components/ZonasTab";
 
-type Tab = "mapa" | "buscar" | "favoritos";
+type Tab = "zonas" | "mapa" | "favoritos";
 
 export default function Home() {
-  const [tab, setTab] = useState<Tab>("buscar");
+  const [tab, setTab] = useState<Tab>("zonas");
 
   return (
     <div className="flex h-screen flex-col">
       <Header tab={tab} onChangeTab={setTab} />
       <main className="flex flex-1 overflow-hidden">
-        {tab === "mapa" ? <MapaTab /> : tab === "favoritos" ? <FavoritosTab /> : <BuscarTab />}
+        {tab === "mapa" ? <MapaTab /> : tab === "favoritos" ? <FavoritosTab /> : <ZonasTab />}
       </main>
     </div>
   );

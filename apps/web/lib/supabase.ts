@@ -5,8 +5,8 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
-// Sin proyecto Supabase configurado, la web sigue funcionando (mapa,
-// cuestionario, tiempo) — solo login/favoritos quedan deshabilitados en vez
+// Sin proyecto Supabase configurado, la web sigue funcionando (mapa de
+// zonas, mapa por deporte, tiempo) — login/favoritos quedan deshabilitados en vez
 // de romper el arranque. Mismo patrón que apps/mobile/src/supabase.ts.
 export const supabase: SupabaseClient | null = isSupabaseConfigured
   ? createClient(supabaseUrl!, supabaseAnonKey!, {

@@ -2,7 +2,7 @@
 
 import { useAuth } from "./auth/AuthProvider";
 
-type Tab = "mapa" | "buscar" | "favoritos";
+type Tab = "zonas" | "mapa" | "favoritos";
 
 interface Props {
   tab: Tab;
@@ -10,7 +10,7 @@ interface Props {
 }
 
 const TABS: { key: Tab; label: string }[] = [
-  { key: "buscar", label: "Buscar" },
+  { key: "zonas", label: "Zonas" },
   { key: "mapa", label: "Mapa" },
   { key: "favoritos", label: "Favoritos" },
 ];

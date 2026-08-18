@@ -8,7 +8,7 @@ const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
 // Si no hay proyecto Supabase configurado todavía, la app debe poder seguir
-// funcionando (mapa, cuestionario, tiempo) — solo Auth/Favoritos quedan
+// funcionando (mapa, tiempo) — solo Auth/Favoritos quedan
 // deshabilitados con un aviso, en vez de crashear al arrancar.
 export const supabase: SupabaseClient | null = isSupabaseConfigured
   ? createClient(supabaseUrl!, supabaseAnonKey!, {

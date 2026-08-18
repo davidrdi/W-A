@@ -2,7 +2,11 @@
 
 App móvil que recomienda dónde y cuándo practicar deporte al aire libre en España (playa, surf,
 windsurf, senderismo, paseo, running, bici), combinando meteorología de hoy, el tiempo que hizo
-ayer (estado del terreno) y una recomendación de zona generada por IA a partir de datos reales.
+ayer (estado del terreno) y una explicación de zona generada por IA a partir de datos reales.
+
+La entrada al producto no es una pregunta en texto libre sino un mapa: el usuario elige entre dos
+versiones — mar y costa, o tierra y montaña — y ve el estado de cada zona directamente sobre el
+mapa (ver "Mapa de zonas").
 
 ## Estructura
 
@@ -50,9 +54,9 @@ npm run test
 Next.js (App Router) + Tailwind + Leaflet vanilla, con la misma arquitectura que
 [Trebo](https://github.com/davidrdi/trebo) (mismo autor): mapa Leaflet imperativo con tiles de
 CARTO Voyager, pines por `L.divIcon` con HTML generado desde `buildPinHtml` (shared), sin Google
-Maps. Cubre las pantallas "Buscar" (cuestionario en lenguaje natural) y "Mapa" (deporte +
-localidad); auth/favoritos y los anillos de score multi-deporte del modal aún no están portados
-a web (sí en mobile, ver más abajo).
+Maps. Cubre las pantallas "Zonas" (mapa interactivo de chips, la principal) y "Mapa" (deporte +
+localidad); los anillos de score multi-deporte del modal aún no están portados a web (sí en
+mobile, ver más abajo).
 
 `@w-a/shared` es un paquete `"type": "module"` con `moduleResolution: nodenext` (lo exige
 ejecutar el backend directo con `tsx`/Node) — sus re-exports internos usan extensión `.js` aunque
@@ -128,30 +132,40 @@ penalización (ej. senderismo penaliza el barro de ayer más que running; bici p
 mojado de hoy). Consulta general del tiempo (sin recomendación de zona) en `GET /weather`, por
 localidad o por coordenadas.
 
-## Cuestionario en lenguaje natural
+## Mapa de zonas
 
-`POST /query` con `{ text: "quiero playa en el sur de Galicia que admita perros" }`:
+La pantalla principal (`apps/web`, pestaña "Zonas"). El usuario no escribe: elige modo y mueve el
+mapa.
 
-1. Claude Haiku (`services/claude.ts#parseQueryIntent`) extrae `{sport, localityText, filters}` — barato,
-   solo interpreta intención, no razona sobre meteo.
-2. Se geocodifica `localityText` igual que en `/spots` (límite administrativo real).
-3. Se buscan spots del deporte, se filtran por `filters` (amenidades) — solo el filtro `requireNaturist`
-   es estricto; los demás excluyen únicamente cuando OSM dice explícitamente lo contrario, porque exigir
-   confirmación positiva dejaría casi todo fuera (la mayoría de spots no tienen esos tags).
-4. Se enriquecen los candidatos (meteo + marino si aplica) y se puntúan con las mismas reglas deterministas
-   de `/spots`.
-5. Claude Sonnet (`rankSpots`) los ordena de mejor a peor ajuste con un titular + explicación cada uno —
-   nunca decide el score, solo explica el orden. Es la llamada con el prompt más grande (todos los
-   candidatos enriquecidos), y al ser ordenar + resumir sobre datos ya calculados no necesita el modelo
-   grande: en Sonnet cuesta bastante menos con la misma calidad percibida.
+- **Dos modos.** `mar` (costa) y `tierra`. No son deportes: son el contexto sobre el que se puntúa.
+- **Un chip por zona, según el zoom.** `GET /zones?mode&zoom&north&south&east&west` devuelve un chip
+  por zona visible. El zoom decide la granularidad (`services/zones.ts#levelForZoom`): hasta z8
+  provincia, z9-z11 municipio, z12+ barrio. Si OSM no tiene barrios mapeados en esa ciudad, baja
+  solo a municipio y lo dice en la respuesta (`level`).
+- **De dónde salen las zonas.** Las provincias son una tabla estática (`data/provinces.ts`): es la
+  vista inicial de toda España y resolverla por Overpass sería lento y caro para algo que no cambia.
+  Municipios y barrios sí salen de Overpass por bbox (`admin_level` 8 y 9/10, más nodos
+  `place=suburb|quarter|neighbourhood` para los barrios que no son relación), cacheados 7 días con
+  el bbox redondeado a una rejilla de 0.1° para que mover un poco el mapa no repita la consulta.
+- **Modo mar y costa.** La API marina devuelve nulos tierra adentro, así que un chip de mar no se
+  puede anclar al centro de la zona: cada playa del área visible se asigna a la zona con el centro
+  más próximo y el chip se ancla a esa playa (las zonas sin ninguna playa cerca desaparecen del
+  mapa). A nivel provincia se usa el `seaPoint` de la tabla estática.
+- **El score del chip es genérico, no de un deporte** (`scoring/rules.ts#scoreZone`): responde "¿qué
+  tal está esta zona hoy para salir a hacer deporte?". No es la media de los deportes del modo —
+  mezclaría condiciones opuestas, porque el viento que arruina la playa es el que hace el
+  windsurf—, sino una regla propia sobre lo que estropea cualquier plan: llover ahora, terreno o
+  mar impracticable, viento extremo, temperatura fuera de rango.
+- **Al tocar un chip** se lanza `GET /zones/detail`, que devuelve el estado de la zona (meteo y, en
+  mar, oleaje y temperatura del agua), **qué deportes encajan mejor hoy** con esas condiciones
+  (ahí sí, con el scoring por deporte de siempre, ordenados de mejor a peor) y los **mejores y
+  peores sitios concretos** dentro de la zona. Un municipio se recorre por su polígono real
+  (`area(3600000000 + id de la relación)`); una provincia entera tardaría demasiado en Overpass y
+  un barrio-nodo ni siquiera tiene polígono, así que en esos dos casos se muestrea por radio
+  alrededor del punto del chip (`services/spots.ts#findSpotsAround`).
 
-Cada llamada al API escribe a stdout una línea `{"event":"claude_usage",...}` con `inputTokens`,
-`outputTokens`, tokens de caché y `estimatedCostUsd`, etiquetada por `operation` y `model`. Agregando
-esas líneas sale el coste real por consulta (las tarifas usadas para la estimación están en
-`services/claude.ts`; la factura de la consola de Anthropic sigue siendo la fuente de verdad).
-
-Limitación conocida: para regiones compuestas ("sur de Galicia") Claude elige la localidad real más
-razonable dentro de esa zona, no hay un gazetteer de "sur/norte de X" — documentado en el plan de producto.
+Todo esto es determinista: ninguna de las dos llamadas pasa por Claude. La IA sigue entrando solo
+al abrir un sitio concreto (`/explain`, y el chat de seguimiento sobre ese sitio).
 
 ## Auth y favoritos
 
@@ -184,17 +198,17 @@ siempre por el `user_id` verificado (nunca uno que venga del cliente).
    desarrollo: **Authentication > Providers > Email > Confirm email → desactivar** (actívalo de
    nuevo antes de producción).
 
-Sin estas variables configuradas, el resto de la app (mapa, cuestionario, tiempo) sigue
+Sin estas variables configuradas, el resto de la app (mapa de zonas, mapa por deporte, tiempo) sigue
 funcionando con normalidad — la pestaña Favoritos simplemente avisa de que Supabase no está
 configurado en vez de fallar.
 
 ## Onboarding y leyenda
 
 Primer uso: `OnboardingGate` (`src/components/OnboardingGate.tsx`) comprueba un flag en
-AsyncStorage y muestra una pantalla de bienvenida de 3 puntos (scoring por colores, cuestionario
-en lenguaje natural, favoritos) antes de entrar a la app — se guarda para no repetirla.
-`ScoreLegend` (verde/ámbar/rojo + qué significa cada uno) aparece junto a cualquier lista de
-resultados con pines coloreados (mapa y cuestionario).
+AsyncStorage y muestra una pantalla de bienvenida de 3 puntos (scoring por colores, mapa por
+deporte y localidad, favoritos) antes de entrar a la app — se guarda para no repetirla.
+`ScoreLegend` (verde/ámbar/rojo + qué significa cada uno) aparece junto a cualquier vista con
+resultados coloreados (mapa de zonas y mapa por deporte).
 
 ## V2: notificaciones push de favoritos
 
@@ -266,7 +280,7 @@ npm install --legacy-peer-deps
 ## Plan de producto
 
 El desarrollo sigue un plan por fases (scaffold → meteo básico → scoring y mapa → explicación IA
-→ resto de deportes → cuestionario en lenguaje natural → auth y favoritos → pulido). El
-diferencial frente a apps existentes (Windy, Surfline, Windguru, AllTrails, Komoot, Wikiloc...)
-es combinar automáticamente meteo de hoy + ayer, explicar con IA el porqué de una zona concreta,
-y responder a un cuestionario en lenguaje natural ceñido a la localidad exacta pedida.
+→ resto de deportes → mapa de zonas por zoom → auth y favoritos → pulido). El diferencial frente
+a apps existentes (Windy, Surfline, Windguru, AllTrails, Komoot, Wikiloc...) es combinar
+automáticamente meteo de hoy + ayer, explicar con IA el porqué de una zona concreta, y dejar ver
+el estado de toda España para hacer deporte navegando el mapa, sin teclear nada.

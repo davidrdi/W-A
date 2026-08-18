@@ -81,7 +81,7 @@ export function SpotDetailPanel({ spot, distanceLabel, onClose }: Props) {
   const amenities = explanation?.groundingPayload.amenities;
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-[1200] flex justify-end bg-black/40 backdrop-blur-sm" onClick={onClose}>
       <div
         className="flex h-full w-full max-w-md flex-col gap-4 overflow-y-auto border-l border-white/60 bg-white/95 p-6 shadow-2xl backdrop-blur-md"
         onClick={(e) => e.stopPropagation()}

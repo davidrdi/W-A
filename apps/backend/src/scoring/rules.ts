@@ -1,4 +1,4 @@
-import type { MarineSnapshot, ScoreBand, Sport, WeatherSnapshot } from "@w-a/shared";
+import type { MarineSnapshot, ScoreBand, Sport, WeatherSnapshot, ZoneMode } from "@w-a/shared";
 
 // Reglas deterministas, no IA: el color del pin tiene que ser instantáneo y
 // reproducible. Claude entra después, solo para explicar el score en texto
@@ -178,4 +178,77 @@ export function scoreWaterSport(sport: Sport, weather: WeatherSnapshot, marine: 
     default:
       throw new Error(`scoreWaterSport: deporte no soportado "${sport}"`);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Score genérico de zona (mapa de chips)
+//
+// Los scores de arriba responden "¿qué tal está esto para X deporte?". El
+// chip del mapa responde antes otra pregunta: "¿qué tal está esta zona hoy
+// para salir a hacer deporte, en general?". Por eso no es la media de los
+// deportes del modo (mezclaría condiciones opuestas: el viento que arruina
+// la playa es el que hace el windsurf) sino una regla propia sobre lo que
+// estropea CUALQUIER plan al aire libre: llover ahora, terreno/mar
+// impracticable, viento extremo y temperatura fuera de rango.
+// El desglose por deporte se calcula aparte, al abrir la zona.
+// ---------------------------------------------------------------------------
+
+const LAND_COMFORT_TEMP_MIN_C = 6;
+const LAND_COMFORT_TEMP_MAX_C = 26;
+
+/** 0-100. Condiciones generales para hacer deporte en tierra hoy. */
+export function scoreZoneLand(weather: WeatherSnapshot): number {
+  let score = 100;
+
+  // Llover hoy es lo que más condiciona salir; la lluvia de ayer pesa menos
+  // (barro) porque afecta al terreno, no al plan.
+  score -= clampPenalty(weather.rainTodayMm * 5, 45);
+  score -= clampPenalty(weather.rainYesterdayMm * 1.5, 25);
+  score -= clampPenalty((weather.windMaxTodayKmh - 25) * 1.2, 25);
+
+  const tempDeviation =
+    Math.max(0, weather.temperatureAvgTodayC - LAND_COMFORT_TEMP_MAX_C) +
+    Math.max(0, LAND_COMFORT_TEMP_MIN_C - weather.temperatureAvgTodayC);
+  score -= clampPenalty(tempDeviation * 2, 25);
+
+  return clampScore(score);
+}
+
+const SEA_COMFORT_TEMP_MIN_C = 15;
+const SEA_COMFORT_TEMP_MAX_C = 32;
+
+/**
+ * 0-100. Condiciones generales para hacer deporte en la costa hoy. A
+ * diferencia de tierra, el viento moderado no penaliza (es materia prima
+ * del windsurf y no molesta al surf): solo penaliza el viento extremo, que
+ * hace la costa desagradable o peligrosa para todos. El mar plano tampoco
+ * penaliza — se puede nadar o pasear la playa aunque no haya olas.
+ */
+export function scoreZoneSea(weather: WeatherSnapshot, marine: MarineSnapshot): number {
+  let score = 100;
+
+  score -= clampPenalty(weather.rainTodayMm * 4, 40);
+  // Solo temporal: hasta rachas de 40 km/h la costa se disfruta igual.
+  score -= clampPenalty((weather.windMaxTodayKmh - 40) * 2, 45);
+
+  const tempDeviation =
+    Math.max(0, weather.temperatureAvgTodayC - SEA_COMFORT_TEMP_MAX_C) +
+    Math.max(0, SEA_COMFORT_TEMP_MIN_C - weather.temperatureAvgTodayC);
+  score -= clampPenalty(tempDeviation * 2, 25);
+
+  // Mar muy grueso: deja de ser practicable para casi todo el mundo.
+  score -= clampPenalty((marine.waveHeightMaxM - 2.5) * 20, 30);
+  // Agua fría: no impide el deporte (hay neopreno) pero baja el atractivo.
+  score -= clampPenalty((14 - marine.seaSurfaceTempC) * 2, 12);
+
+  return clampScore(score);
+}
+
+/** Score genérico de la zona según el modo del mapa. */
+export function scoreZone(mode: ZoneMode, weather: WeatherSnapshot, marine?: MarineSnapshot): number {
+  if (mode === "mar") {
+    if (!marine) throw new Error("scoreZone: el modo mar necesita datos marinos");
+    return scoreZoneSea(weather, marine);
+  }
+  return scoreZoneLand(weather);
 }

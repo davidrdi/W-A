@@ -5,13 +5,16 @@ import type {
   Favorite,
   FavoritesResponse,
   FollowUpResponse,
-  QueryResponse,
   ScoredSpot,
   SpotExplanation,
   SpotGroundingPayload,
   Sport,
   SpotsResponse,
   WeatherResponse,
+  ZoneChip,
+  ZoneDetailResponse,
+  ZoneMode,
+  ZonesResponse,
 } from "@w-a/shared";
 
 // Sin quitar la barra final, "https://host/" + "/spots" produce "//spots" y
@@ -52,8 +55,36 @@ export function fetchWeather(locality: string): Promise<WeatherResponse> {
   return getJson<WeatherResponse>("/weather", { locality });
 }
 
-export function submitQuery(text: string): Promise<QueryResponse> {
-  return postJson<QueryResponse>("/query", { text });
+export interface ZonesViewport {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
+  zoom: number;
+}
+
+export function fetchZones(mode: ZoneMode, viewport: ZonesViewport): Promise<ZonesResponse> {
+  return getJson<ZonesResponse>("/zones", {
+    mode,
+    zoom: String(Math.round(viewport.zoom)),
+    north: viewport.north.toFixed(4),
+    south: viewport.south.toFixed(4),
+    east: viewport.east.toFixed(4),
+    west: viewport.west.toFixed(4),
+  });
+}
+
+// El chip que ya tiene el cliente lleva todo lo que el backend necesita para
+// el detalle (id, nombre, nivel y punto): no hace falta volver a resolverlo.
+export function fetchZoneDetail(zone: ZoneChip, mode: ZoneMode): Promise<ZoneDetailResponse> {
+  return getJson<ZoneDetailResponse>("/zones/detail", {
+    id: zone.id,
+    name: zone.name,
+    level: zone.level,
+    mode,
+    lat: String(zone.lat),
+    lon: String(zone.lon),
+  });
 }
 
 export function explainSpot(spot: ScoredSpot): Promise<SpotExplanation> {

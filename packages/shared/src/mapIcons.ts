@@ -1,4 +1,4 @@
-import type { ScoreBand, Sport } from "./types.js";
+import type { ScoreBand, Sport, ZoneMode } from "./types.js";
 
 // Iconos portados del sistema de pines de Trebo (github.com/davidrdi/trebo,
 // nextjs/lib/sport-icons.ts): viewBox 20x20, trazo/relleno blanco, pensados
@@ -65,6 +65,11 @@ export const SPORT_LABEL: Record<Sport, string> = {
   windsurf: "Windsurf",
 };
 
+export const ZONE_MODE_LABEL: Record<ZoneMode, string> = {
+  mar: "Mar y costa",
+  tierra: "Tierra y montaña",
+};
+
 export const SCORE_BAND_COLOR: Record<ScoreBand, string> = {
   green: "#16a34a",
   amber: "#f59e0b",
@@ -84,4 +89,24 @@ export function buildPinHtml(sport: Sport, scoreBand: ScoreBand): string {
       <div style="transform:rotate(45deg);width:14px;height:14px;line-height:0;">${icon}</div>
     </div>
   </div>`;
+}
+
+// Chip de zona del mapa interactivo: píldora con el nombre y el score, del
+// color de la banda. Igual que buildPinHtml, vive en shared para que web
+// (L.divIcon) y mobile pinten exactamente lo mismo.
+export function buildZoneChipHtml(name: string, score: number, scoreBand: ScoreBand): string {
+  const color = SCORE_BAND_COLOR[scoreBand];
+  const safeName = escapeHtml(name);
+  return `<div style="display:inline-flex;align-items:center;gap:6px;white-space:nowrap;padding:4px 9px 4px 5px;border-radius:999px;background:#fff;border:1.5px solid ${color};box-shadow:0 2px 6px rgba(0,0,0,.2);font:600 12px/1 system-ui,sans-serif;color:#1f2937;transform:translate(-50%,-50%);">
+    <span style="display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;border-radius:11px;background:${color};color:#fff;font-weight:700;">${score}</span>
+    <span>${safeName}</span>
+  </div>`;
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }

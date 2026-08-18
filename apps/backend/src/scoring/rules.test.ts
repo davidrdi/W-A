@@ -10,6 +10,9 @@ import {
   scoreSurf,
   scoreWaterSport,
   scoreWindsurf,
+  scoreZone,
+  scoreZoneLand,
+  scoreZoneSea,
 } from "./rules.js";
 
 const CLEAR_DAY = {
@@ -182,5 +185,53 @@ describe("scoreBandFor", () => {
     expect(scoreBandFor(40)).toBe("amber");
     expect(scoreBandFor(39)).toBe("red");
     expect(scoreBandFor(0)).toBe("red");
+  });
+});
+
+describe("scoreZoneLand", () => {
+  it("da la máxima en un día seco y templado", () => {
+    expect(scoreZoneLand(CLEAR_DAY)).toBe(100);
+  });
+
+  it("hunde el score cuando llueve hoy, más que cuando solo llovió ayer", () => {
+    const rainingNow = { ...CLEAR_DAY, rainTodayMm: 10 };
+    const rainedYesterday = { ...CLEAR_DAY, rainYesterdayMm: 10 };
+
+    expect(scoreZoneLand(rainingNow)).toBeLessThan(scoreZoneLand(rainedYesterday));
+    expect(scoreZoneLand(rainingNow)).toBeLessThan(60);
+  });
+
+  it("penaliza el viento fuerte y el calor extremo", () => {
+    expect(scoreZoneLand({ ...CLEAR_DAY, windMaxTodayKmh: 60 })).toBeLessThan(80);
+    expect(scoreZoneLand({ ...CLEAR_DAY, temperatureAvgTodayC: 38 })).toBeLessThan(80);
+  });
+});
+
+describe("scoreZoneSea", () => {
+  const WARM_CALM_SEA = { waveHeightAvgM: 0.5, waveHeightMaxM: 0.8, seaSurfaceTempC: 20 };
+
+  it("no penaliza el viento moderado, que en la costa da juego", () => {
+    const windy = { ...BEACH_DAY, windAvgTodayKmh: 30, windMaxTodayKmh: 40 };
+    expect(scoreZoneSea(windy, WARM_CALM_SEA)).toBe(scoreZoneSea(BEACH_DAY, WARM_CALM_SEA));
+  });
+
+  it("sí penaliza el temporal: viento extremo y mar muy gruesa", () => {
+    const storm = { ...BEACH_DAY, windMaxTodayKmh: 70 };
+    const roughSea = { waveHeightAvgM: 3.5, waveHeightMaxM: 4.2, seaSurfaceTempC: 15 };
+
+    expect(scoreZoneSea(storm, WARM_CALM_SEA)).toBeLessThan(70);
+    expect(scoreZoneSea(BEACH_DAY, roughSea)).toBeLessThan(75);
+  });
+
+  it("el mar plano no penaliza: se puede nadar aunque no haya olas", () => {
+    expect(scoreZoneSea(BEACH_DAY, { ...FLAT_SEA, seaSurfaceTempC: 20 })).toBe(100);
+  });
+});
+
+describe("scoreZone", () => {
+  it("enruta por modo y exige datos marinos en el mar", () => {
+    expect(scoreZone("tierra", CLEAR_DAY)).toBe(scoreZoneLand(CLEAR_DAY));
+    expect(scoreZone("mar", BEACH_DAY, GOOD_SURF_SEA)).toBe(scoreZoneSea(BEACH_DAY, GOOD_SURF_SEA));
+    expect(() => scoreZone("mar", BEACH_DAY)).toThrow("necesita datos marinos");
   });
 });

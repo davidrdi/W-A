@@ -9,8 +9,8 @@ const FEATURES = [
   },
   {
     color: "#235C4D",
-    title: "Pregunta como a un amigo",
-    description: '"Quiero playa en el sur de Galicia" o "correr en Coruña sin trail" — te decimos dónde ir.',
+    title: "Elige deporte y localidad",
+    description: "Te enseñamos las zonas de esa localidad puntuadas para hoy, y el porqué de cada una.",
   },
   {
     color: "#B8862B",
