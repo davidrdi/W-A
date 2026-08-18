@@ -6,8 +6,11 @@
    mismo Supabase), distinta identidad visual. Los colores de score
    (verde/ámbar/rojo) no cambian: son semánticos, no de marca. */
 :root {
-  --color-primary: #1d4ed8;
-  --color-primary-hover: #1e40af;
+  /* Triples RGB (no hex) porque tailwind.config.ts las envuelve en
+     rgb(var(...) / <alpha-value>) para que funcionen los modificadores de
+     opacidad (bg-primary/90, border-primary/60) del sistema "glass". */
+  --color-primary: 29 78 216;
+  --color-primary-hover: 30 64 175;
   --color-surface: #eef2f7;
   --color-border: #d7dee8;
   --color-text-primary: #111827;

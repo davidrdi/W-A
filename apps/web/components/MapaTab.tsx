@@ -66,19 +66,21 @@ export function MapaTab() {
       </div>
 
       {spots.length > 0 && (
-        <div className="absolute bottom-4 left-3 rounded-lg border border-white/60 bg-white/90 px-3 py-2 shadow-lg backdrop-blur-md">
+        <div className="absolute left-3 top-3 rounded-lg border border-white/60 bg-white/80 px-3 py-2 shadow-lg backdrop-blur-md md:bottom-4 md:top-auto">
           <ScoreLegend />
         </div>
       )}
 
-      <div className="absolute left-3 right-3 top-3 flex flex-col gap-2 rounded-xl border border-white/60 bg-white/90 p-3 shadow-lg backdrop-blur-md">
+      <div className="absolute inset-x-3 bottom-3 top-auto flex max-h-[45vh] flex-col gap-2 overflow-y-auto rounded-xl border border-white/60 bg-white/80 p-3 shadow-lg backdrop-blur-md md:top-3 md:bottom-auto md:max-h-none">
         <div className="flex flex-wrap gap-1.5">
           {SPORTS.map((s) => (
             <button
               key={s}
               onClick={() => setSport(s)}
-              className={`rounded-full px-3 py-1.5 text-sm font-semibold ${
-                s === sport ? "bg-primary text-white" : "bg-surface text-textPrimary"
+              className={`rounded-full border px-3 py-1.5 text-sm font-semibold backdrop-blur-sm transition-colors ${
+                s === sport
+                  ? "border-primary/60 bg-primary/90 text-white shadow"
+                  : "border-white/60 bg-white/60 text-textPrimary hover:bg-white/90"
               }`}
             >
               {SPORT_LABEL[s]}
@@ -87,14 +89,14 @@ export function MapaTab() {
         </div>
         <div className="flex gap-2">
           <input
-            className="flex-1 rounded-lg border border-border px-3 py-2 text-sm"
+            className="flex-1 rounded-lg border border-white/60 bg-white/70 px-3 py-2 text-sm backdrop-blur-sm placeholder:text-textSecondary"
             value={locality}
             onChange={(e) => setLocality(e.target.value)}
             placeholder="Localidad (ej. A Coruña)"
             onKeyDown={(e) => e.key === "Enter" && search()}
           />
           <button
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+            className="rounded-lg border border-primary/60 bg-primary/90 px-4 py-2 text-sm font-semibold text-white shadow backdrop-blur-sm disabled:opacity-50"
             onClick={search}
             disabled={state.kind === "loading"}
           >

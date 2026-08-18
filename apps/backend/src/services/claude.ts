@@ -17,7 +17,7 @@ const MODEL = "claude-opus-5";
 // Barato y rápido — solo para extraer intención del cuestionario, sin
 // razonar sobre meteo. La calidad de la explicación (donde importa el
 // diferencial del producto) usa siempre el modelo grande.
-const INTENT_MODEL = "claude-haiku-4-5";
+const INTENT_MODEL = "claude-haiku-4-5-20251001";
 
 const SYSTEM_PROMPT = `Eres el asistente de una app que recomienda dónde practicar deporte al
 aire libre en España. Se te da un payload JSON con datos reales ya calculados (meteo de hoy,

@@ -5,7 +5,10 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        primary: { DEFAULT: "var(--color-primary)", hover: "var(--color-primary-hover)" },
+        primary: {
+          DEFAULT: "rgb(var(--color-primary) / <alpha-value>)",
+          hover: "rgb(var(--color-primary-hover) / <alpha-value>)",
+        },
         surface: "var(--color-surface)",
         border: "var(--color-border)",
         textPrimary: "var(--color-text-primary)",
