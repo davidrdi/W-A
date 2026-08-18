@@ -11,7 +11,10 @@ import type {
   WeatherResponse,
 } from "@w-a/shared";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000";
+// Sin quitar la barra final, "https://host/" + "/spots" produce "//spots" y
+// el backend responde 404 (Not Found) — normalizamos por si el valor
+// configurado en Vercel/​.env trae esa barra.
+const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000").replace(/\/+$/, "");
 
 async function getJson<T>(path: string, params?: Record<string, string>): Promise<T> {
   const url = new URL(`${API_URL}${path}`);
