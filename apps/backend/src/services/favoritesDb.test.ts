@@ -47,7 +47,7 @@ describe("listFavorites", () => {
     expect(favorites).toEqual([
       { id: "fav-1", spotId: "way/1", spotName: "Parque de Santa Margarita", sport: "running", lat: 43.37, lon: -8.4, createdAt: "2026-08-17T10:00:00Z" },
     ]);
-    expect(mockFrom).toHaveBeenCalledWith("favorites");
+    expect(mockFrom).toHaveBeenCalledWith("sport_favorites");
     expect(chain.eq).toHaveBeenCalledWith("user_id", "user-1");
   });
 

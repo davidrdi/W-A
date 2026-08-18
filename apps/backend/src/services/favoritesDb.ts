@@ -40,7 +40,7 @@ function rowToFavorite(row: FavoriteRow): Favorite {
 
 export async function listFavorites(userId: string): Promise<Favorite[]> {
   const { data, error } = await getSupabaseAdmin()
-    .from("favorites")
+    .from("sport_favorites")
     .select("*")
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
@@ -51,7 +51,7 @@ export async function listFavorites(userId: string): Promise<Favorite[]> {
 
 export async function createFavorite(userId: string, input: CreateFavoriteRequest): Promise<Favorite> {
   const { data, error } = await getSupabaseAdmin()
-    .from("favorites")
+    .from("sport_favorites")
     .upsert(
       {
         user_id: userId,
@@ -71,7 +71,7 @@ export async function createFavorite(userId: string, input: CreateFavoriteReques
 }
 
 export async function deleteFavorite(userId: string, id: string): Promise<void> {
-  const { error } = await getSupabaseAdmin().from("favorites").delete().eq("id", id).eq("user_id", userId);
+  const { error } = await getSupabaseAdmin().from("sport_favorites").delete().eq("id", id).eq("user_id", userId);
   if (error) throw new Error(`Supabase respondió con error al borrar el favorito: ${error.message}`);
 }
 
@@ -81,7 +81,7 @@ interface FavoriteWithOwnerRow extends FavoriteRow {
 }
 
 export async function listAllFavorites(): Promise<FavoriteForNotification[]> {
-  const { data, error } = await getSupabaseAdmin().from("favorites").select("*");
+  const { data, error } = await getSupabaseAdmin().from("sport_favorites").select("*");
   if (error) throw new Error(`Supabase respondió con error al listar todos los favoritos: ${error.message}`);
 
   return ((data ?? []) as FavoriteWithOwnerRow[]).map((row) => ({
@@ -97,6 +97,6 @@ export async function listAllFavorites(): Promise<FavoriteForNotification[]> {
 }
 
 export async function markFavoriteNotified(id: string, date: string): Promise<void> {
-  const { error } = await getSupabaseAdmin().from("favorites").update({ last_notified_date: date }).eq("id", id);
+  const { error } = await getSupabaseAdmin().from("sport_favorites").update({ last_notified_date: date }).eq("id", id);
   if (error) throw new Error(`Supabase respondió con error al marcar el favorito como notificado: ${error.message}`);
 }
