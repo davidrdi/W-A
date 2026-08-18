@@ -2,13 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Azul en vez del verde de Trebo — misma familia de producto (mismo autor,
+   mismo Supabase), distinta identidad visual. Los colores de score
+   (verde/ámbar/rojo) no cambian: son semánticos, no de marca. */
 :root {
-  --color-primary: #235c4d;
-  --color-primary-hover: #1a463a;
-  --color-surface: #f2f4f1;
-  --color-border: #d3dcce;
-  --color-text-primary: #17211a;
-  --color-text-secondary: #52625a;
+  --color-primary: #1d4ed8;
+  --color-primary-hover: #1e40af;
+  --color-surface: #eef2f7;
+  --color-border: #d7dee8;
+  --color-text-primary: #111827;
+  --color-text-secondary: #55606e;
   --color-danger: #b4432e;
   --color-score-green: #16a34a;
   --color-score-amber: #f59e0b;

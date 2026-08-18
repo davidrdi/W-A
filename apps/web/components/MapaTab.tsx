@@ -66,12 +66,12 @@ export function MapaTab() {
       </div>
 
       {spots.length > 0 && (
-        <div className="absolute bottom-4 left-3 rounded-lg bg-white px-3 py-2 shadow-md">
+        <div className="absolute bottom-4 left-3 rounded-lg border border-white/60 bg-white/90 px-3 py-2 shadow-lg backdrop-blur-md">
           <ScoreLegend />
         </div>
       )}
 
-      <div className="absolute left-3 right-3 top-3 flex flex-col gap-2 rounded-xl bg-white p-3 shadow-lg">
+      <div className="absolute left-3 right-3 top-3 flex flex-col gap-2 rounded-xl border border-white/60 bg-white/90 p-3 shadow-lg backdrop-blur-md">
         <div className="flex flex-wrap gap-1.5">
           {SPORTS.map((s) => (
             <button

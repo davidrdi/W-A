@@ -19,9 +19,9 @@ export function Header({ tab, onChangeTab }: Props) {
   const { session, isSupabaseConfigured, signInWithGoogle, signOut } = useAuth();
 
   return (
-    <header className="flex items-center justify-between gap-3 border-b border-border px-5 py-3">
+    <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-white/60 bg-white/90 px-5 py-3 shadow-sm backdrop-blur-md">
       <span className="text-lg font-bold text-primary">W-A</span>
-      <nav className="flex gap-1 rounded-lg bg-surface p-1">
+      <nav className="flex gap-1 rounded-lg bg-surface/80 p-1">
         {TABS.map((t) => (
           <button
             key={t.key}
