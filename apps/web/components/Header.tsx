@@ -1,6 +1,8 @@
 "use client";
 
-type Tab = "mapa" | "buscar";
+import { useAuth } from "./auth/AuthProvider";
+
+type Tab = "mapa" | "buscar" | "favoritos";
 
 interface Props {
   tab: Tab;
@@ -10,11 +12,14 @@ interface Props {
 const TABS: { key: Tab; label: string }[] = [
   { key: "buscar", label: "Buscar" },
   { key: "mapa", label: "Mapa" },
+  { key: "favoritos", label: "Favoritos" },
 ];
 
 export function Header({ tab, onChangeTab }: Props) {
+  const { session, isSupabaseConfigured, signInWithGoogle, signOut } = useAuth();
+
   return (
-    <header className="flex items-center justify-between border-b border-border px-5 py-3">
+    <header className="flex items-center justify-between gap-3 border-b border-border px-5 py-3">
       <span className="text-lg font-bold text-primary">W-A</span>
       <nav className="flex gap-1 rounded-lg bg-surface p-1">
         {TABS.map((t) => (
@@ -29,6 +34,22 @@ export function Header({ tab, onChangeTab }: Props) {
           </button>
         ))}
       </nav>
+      {isSupabaseConfigured &&
+        (session ? (
+          <button
+            onClick={() => signOut()}
+            className="whitespace-nowrap text-sm font-semibold text-textSecondary hover:text-textPrimary"
+          >
+            Cerrar sesión
+          </button>
+        ) : (
+          <button
+            onClick={() => signInWithGoogle()}
+            className="whitespace-nowrap rounded-lg border border-border px-3 py-1.5 text-sm font-semibold text-textPrimary hover:bg-surface"
+          >
+            Entrar con Google
+          </button>
+        ))}
     </header>
   );
 }

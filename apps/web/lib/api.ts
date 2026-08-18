@@ -1,6 +1,9 @@
 import type {
   ChatMessage,
+  CreateFavoriteRequest,
   ExplainRequest,
+  Favorite,
+  FavoritesResponse,
   FollowUpResponse,
   QueryResponse,
   ScoredSpot,
@@ -71,4 +74,37 @@ export function askFollowUp(
   question: string,
 ): Promise<FollowUpResponse> {
   return postJson<FollowUpResponse>("/explain/followup", { groundingPayload, priorMessages, question });
+}
+
+export async function fetchFavorites(accessToken: string): Promise<FavoritesResponse> {
+  const response = await fetch(`${API_URL}/favorites`, { headers: { Authorization: `Bearer ${accessToken}` } });
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.error ?? `Backend respondió ${response.status}`);
+  }
+  return response.json();
+}
+
+export async function addFavorite(accessToken: string, input: CreateFavoriteRequest): Promise<Favorite> {
+  const response = await fetch(`${API_URL}/favorites`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.error ?? `Backend respondió ${response.status}`);
+  }
+  return response.json();
+}
+
+export async function removeFavorite(accessToken: string, id: string): Promise<void> {
+  const response = await fetch(`${API_URL}/favorites/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.error ?? `Backend respondió ${response.status}`);
+  }
 }

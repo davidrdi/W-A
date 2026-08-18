@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.112.3",
     "@w-a/shared": "*",
     "client-only": "^0.0.1",
     "leaflet": "^1.9.4",

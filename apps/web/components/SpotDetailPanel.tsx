@@ -5,6 +5,7 @@ import type { ChatMessage, ScoredSpot, SpotExplanation } from "@w-a/shared";
 import { SCORE_BAND_COLOR } from "@w-a/shared";
 
 import { askFollowUp, explainSpot } from "../lib/api";
+import { useAuth } from "./auth/AuthProvider";
 
 interface Props {
   spot: ScoredSpot | null;
@@ -20,6 +21,8 @@ export function SpotDetailPanel({ spot, distanceLabel, onClose }: Props) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [question, setQuestion] = useState("");
   const [asking, setAsking] = useState(false);
+  const [togglingFavorite, setTogglingFavorite] = useState(false);
+  const { session, isFavorite, toggleFavorite } = useAuth();
 
   useEffect(() => {
     if (!spot) return;
@@ -39,6 +42,20 @@ export function SpotDetailPanel({ spot, distanceLabel, onClose }: Props) {
   }, [spot]);
 
   if (!spot) return null;
+
+  const favorited = isFavorite(spot.id, spot.sport);
+
+  const handleToggleFavorite = async () => {
+    if (togglingFavorite) return;
+    setTogglingFavorite(true);
+    try {
+      await toggleFavorite(spot);
+    } catch {
+      // Un fallo al guardar el favorito no debe romper el panel.
+    } finally {
+      setTogglingFavorite(false);
+    }
+  };
 
   const send = async () => {
     const trimmed = question.trim();
@@ -74,9 +91,21 @@ export function SpotDetailPanel({ spot, distanceLabel, onClose }: Props) {
             <h2 className="text-lg font-bold text-textPrimary">{spot.name}</h2>
             {distanceLabel && <p className="text-sm text-textSecondary">A {distanceLabel}</p>}
           </div>
-          <button onClick={onClose} className="text-sm font-semibold text-textSecondary hover:text-textPrimary">
-            Cerrar
-          </button>
+          <div className="flex items-center gap-3">
+            {session && (
+              <button
+                onClick={handleToggleFavorite}
+                disabled={togglingFavorite}
+                aria-label={favorited ? "Quitar de favoritos" : "Añadir a favoritos"}
+                className="text-xl leading-none disabled:opacity-50"
+              >
+                {favorited ? "♥" : "♡"}
+              </button>
+            )}
+            <button onClick={onClose} className="text-sm font-semibold text-textSecondary hover:text-textPrimary">
+              Cerrar
+            </button>
+          </div>
         </div>
 
         {loadState.kind === "loading" && <p className="text-sm text-textSecondary">Cargando explicación…</p>}
