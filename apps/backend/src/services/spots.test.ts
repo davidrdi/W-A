@@ -54,10 +54,44 @@ describe("findSpots", () => {
     expect(spots).toHaveLength(4);
   });
 
-  it("lanza un error legible si Overpass responde con un status de error", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 429 }));
+  it("lanza un error legible, con todos los intentos, si fallan todas las instancias", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: false, status: 429 });
+    vi.stubGlobal("fetch", fetchMock);
 
-    await expect(findSpots("bici", 3_600_000_103)).rejects.toThrow("Overpass respondió 429");
+    await expect(findSpots("bici", 3_600_000_103)).rejects.toThrow(/no respondió en ninguna instancia.*429/s);
+    // Se han probado todas las instancias antes de rendirse.
+    expect(fetchMock.mock.calls.length).toBeGreaterThan(1);
+  });
+
+  it("cae a la siguiente instancia cuando la primera rechaza la petición (p.ej. 406)", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 406 })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          elements: [{ type: "way", id: 7, center: { lat: 42.2, lon: -8.7 }, tags: { name: "Praia de Samil" } }],
+        }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const spots = await findSpots("playa", 3_600_000_107);
+
+    expect(spots[0].name).toBe("Praia de Samil");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("identifica la aplicación en el User-Agent (Overpass rechaza clientes genéricos con 406)", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ elements: [] }) });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await findSpots("running", 3_600_000_108);
+
+    const [, init] = fetchMock.mock.calls[0];
+    expect(init.headers["User-Agent"]).toMatch(/w-a-app/);
+    // El cuerpo va como form-encoded, que es la forma canónica de Overpass.
+    expect(init.headers["Content-Type"]).toBe("application/x-www-form-urlencoded");
+    expect(init.body).toContain("data=");
   });
 
   it("usa un nombre de fallback distinto según la categoría (playa vs sendero)", async () => {

@@ -1,7 +1,23 @@
 import type { Spot, SpotAmenities, Sport } from "@w-a/shared";
 import { getOrSet, SEVEN_DAYS_MS } from "../lib/cache.js";
 
-const OVERPASS_ENDPOINT = process.env.OVERPASS_ENDPOINT ?? "https://overpass-api.de/api/interpreter";
+// La política de uso de Overpass (como la de Nominatim) exige un User-Agent que
+// identifique a la aplicación. `fetch` de Node manda "node" a secas, y el proxy de
+// overpass-api.de responde 406 (Not Acceptable) a clientes genéricos como ese.
+const USER_AGENT = "w-a-app/0.1 (+https://github.com/davidrdi/W-A)";
+
+// Varias instancias: las públicas limitan por IP, y en un hosting compartido como
+// Render la IP de salida va con otros inquilinos, así que una sola instancia se
+// queda corta. Se prueban en orden hasta que una responde.
+const DEFAULT_OVERPASS_ENDPOINTS = [
+  "https://overpass-api.de/api/interpreter",
+  "https://overpass.kumi.systems/api/interpreter",
+  "https://overpass.private.coffee/api/interpreter",
+];
+
+const OVERPASS_ENDPOINTS = process.env.OVERPASS_ENDPOINT
+  ? [process.env.OVERPASS_ENDPOINT]
+  : DEFAULT_OVERPASS_ENDPOINTS;
 
 interface OverpassElement {
   type: "node" | "way" | "relation";
@@ -103,17 +119,45 @@ function fallbackName(el: OverpassElement, category: SpotCategory): string {
 // Se cachean los elementos crudos de Overpass por categoría — nunca el
 // resultado ya mapeado a Spot, porque el campo `sport` depende de qué
 // deporte pidió la consulta (una misma playa sirve para playa/surf/windsurf).
+/**
+ * Lanza la consulta contra las instancias de Overpass en orden y devuelve la primera
+ * que responda. Si fallan todas, el error menciona todos los intentos: con una sola
+ * instancia un 406/429 puntual dejaba la búsqueda muerta sin pista de por qué.
+ */
+async function queryOverpass(query: string): Promise<OverpassResponse> {
+  const failures: string[] = [];
+
+  for (const endpoint of OVERPASS_ENDPOINTS) {
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          // Forma canónica documentada por Overpass. El texto plano también lo
+          // acepta el servidor, pero los proxies que tienen delante las instancias
+          // públicas son más quisquillosos y responden 406.
+          "Content-Type": "application/x-www-form-urlencoded",
+          Accept: "application/json",
+          "User-Agent": USER_AGENT,
+        },
+        body: new URLSearchParams({ data: query }).toString(),
+      });
+
+      if (!res.ok) {
+        failures.push(`${endpoint} respondió ${res.status}`);
+        continue;
+      }
+      return (await res.json()) as OverpassResponse;
+    } catch (error) {
+      failures.push(`${endpoint}: ${error instanceof Error ? error.message : "error de red"}`);
+    }
+  }
+
+  throw new Error(`Overpass no respondió en ninguna instancia (${failures.join("; ")})`);
+}
+
 async function fetchCategoryElements(category: SpotCategory, areaId: number): Promise<OverpassElement[]> {
   return getOrSet(`spots:${category}:${areaId}`, SEVEN_DAYS_MS, async () => {
-    const res = await fetch(OVERPASS_ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain" },
-      body: CATEGORY_QUERY[category](areaId),
-    });
-    if (!res.ok) {
-      throw new Error(`Overpass respondió ${res.status}`);
-    }
-    const data = (await res.json()) as OverpassResponse;
+    const data = await queryOverpass(CATEGORY_QUERY[category](areaId));
     return data.elements;
   });
 }
