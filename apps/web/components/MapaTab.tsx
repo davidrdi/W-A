@@ -66,7 +66,7 @@ export function MapaTab() {
       </div>
 
       {spots.length > 0 && (
-        <div className="absolute left-3 top-3 rounded-lg border border-white/60 bg-white/80 px-3 py-2 shadow-lg backdrop-blur-md md:bottom-4 md:top-auto">
+        <div className="absolute left-3 top-3 z-10 rounded-lg border border-white/60 bg-white/80 px-3 py-2 shadow-lg backdrop-blur-md md:bottom-4 md:top-auto">
           <ScoreLegend />
         </div>
       )}
@@ -75,7 +75,7 @@ export function MapaTab() {
           mínimo mapa posible: bottom-sheet en móvil, tarjeta arriba a la
           derecha en desktop (así no choca con los controles +/- de Leaflet,
           que viven arriba a la izquierda). */}
-      <div className="absolute inset-x-3 bottom-3 top-auto flex max-h-[45vh] flex-col gap-2 overflow-y-auto rounded-xl border border-white/60 bg-white/80 p-3 shadow-lg backdrop-blur-md md:inset-x-auto md:top-3 md:bottom-auto md:right-3 md:max-h-none md:w-80">
+      <div className="absolute inset-x-3 bottom-3 top-auto z-10 flex max-h-[45vh] flex-col gap-2 overflow-y-auto rounded-xl border border-white/60 bg-white/80 p-3 shadow-lg backdrop-blur-md md:inset-x-auto md:top-3 md:bottom-auto md:right-3 md:max-h-none md:w-80">
         <div className="flex flex-wrap gap-1.5">
           {SPORTS.map((s) => (
             <button

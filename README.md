@@ -43,7 +43,19 @@ Supabase). El móvil apunta al backend vía `EXPO_PUBLIC_API_URL`, la web vía
 ```bash
 npm run typecheck
 npm run test
+
+# Tests de navegador de la web (Playwright, levanta él solo el build de producción)
+npm run test:e2e --workspace apps/web
 ```
+
+> **Los tests e2e sirven los tiles del mapa ellos mismos** (`page.route` en
+> `apps/web/e2e/map-overlay.spec.ts`), y eso no es un detalle: `leaflet.css` deja los tiles
+> en `visibility: hidden` hasta que cargan de verdad, así que en cualquier entorno sin
+> salida al CDN de CARTO el mapa no pinta nada y los bugs de superposición del mapa sobre
+> la UI se vuelven **invisibles**. Un test que dependa del CDN real da falsos verdes. Por
+> eso las aserciones son por píxeles y no con `elementFromPoint`: los tiles de Leaflet no
+> capturan el puntero, así que el hit-testing pasa "a través" de ellos aunque tapen la UI
+> por completo.
 
 ### App web (apps/web)
 

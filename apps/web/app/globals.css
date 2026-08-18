@@ -34,6 +34,18 @@ body {
     sans-serif;
 }
 
+/* Leaflet pinta sus capas con z-index 400-1000 (.leaflet-pane 400, .leaflet-control
+   800, .leaflet-top/.leaflet-bottom 1000). Ningún contenedor de la app crea stacking
+   context — position:relative/absolute con z-index:auto no lo crean, y overflow
+   tampoco — así que esos valores escapan al contexto raíz y ganan a TODA la UI
+   (header z-20, panel del mapa sin z-index), tapándola. `isolation` encierra esas
+   capas dentro del mapa sin más efectos secundarios.
+   Se hace aquí, en CSS crudo, y no con la utilidad `isolate` de Tailwind: aplica de
+   golpe a todas las instancias de MapView y no depende del content-scanner. */
+.leaflet-container {
+  isolation: isolate;
+}
+
 /* Pines de deporte (L.divIcon con HTML de buildPinHtml en @w-a/shared) van
    sin el fondo blanco/borde que Leaflet añade por defecto a divIcon. */
 .leaflet-div-icon {
