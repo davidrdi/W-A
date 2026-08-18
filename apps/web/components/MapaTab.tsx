@@ -71,7 +71,11 @@ export function MapaTab() {
         </div>
       )}
 
-      <div className="absolute inset-x-3 bottom-3 top-auto flex max-h-[45vh] flex-col gap-2 overflow-y-auto rounded-xl border border-white/60 bg-white/80 p-3 shadow-lg backdrop-blur-md md:top-3 md:bottom-auto md:max-h-none">
+      {/* Panel flotante compacto (no barra a todo lo ancho) para tapar el
+          mínimo mapa posible: bottom-sheet en móvil, tarjeta arriba a la
+          derecha en desktop (así no choca con los controles +/- de Leaflet,
+          que viven arriba a la izquierda). */}
+      <div className="absolute inset-x-3 bottom-3 top-auto flex max-h-[45vh] flex-col gap-2 overflow-y-auto rounded-xl border border-white/60 bg-white/80 p-3 shadow-lg backdrop-blur-md md:inset-x-auto md:top-3 md:bottom-auto md:right-3 md:max-h-none md:w-80">
         <div className="flex flex-wrap gap-1.5">
           {SPORTS.map((s) => (
             <button
@@ -87,22 +91,20 @@ export function MapaTab() {
             </button>
           ))}
         </div>
-        <div className="flex gap-2">
-          <input
-            className="flex-1 rounded-lg border border-white/60 bg-white/70 px-3 py-2 text-sm backdrop-blur-sm placeholder:text-textSecondary"
-            value={locality}
-            onChange={(e) => setLocality(e.target.value)}
-            placeholder="Localidad (ej. A Coruña)"
-            onKeyDown={(e) => e.key === "Enter" && search()}
-          />
-          <button
-            className="rounded-lg border border-primary/60 bg-primary/90 px-4 py-2 text-sm font-semibold text-white shadow backdrop-blur-sm disabled:opacity-50"
-            onClick={search}
-            disabled={state.kind === "loading"}
-          >
-            {state.kind === "loading" ? "Buscando…" : `Buscar zonas de ${SPORT_LABEL[sport].toLowerCase()}`}
-          </button>
-        </div>
+        <input
+          className="rounded-lg border border-white/60 bg-white/70 px-3 py-2 text-sm backdrop-blur-sm placeholder:text-textSecondary"
+          value={locality}
+          onChange={(e) => setLocality(e.target.value)}
+          placeholder="Localidad (ej. A Coruña)"
+          onKeyDown={(e) => e.key === "Enter" && search()}
+        />
+        <button
+          className="rounded-lg border border-primary/60 bg-primary/90 px-4 py-2 text-sm font-semibold text-white shadow backdrop-blur-sm disabled:opacity-50"
+          onClick={search}
+          disabled={state.kind === "loading"}
+        >
+          {state.kind === "loading" ? "Buscando…" : `Buscar zonas de ${SPORT_LABEL[sport].toLowerCase()}`}
+        </button>
         {state.kind === "error" && <p className="text-sm text-danger">{state.message}</p>}
         {state.kind === "done" && spots.length === 0 && (
           <p className="text-sm text-textSecondary">
