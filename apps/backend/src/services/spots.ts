@@ -1,5 +1,6 @@
 import type { Spot, SpotAmenities, Sport } from "@w-a/shared";
 import { getOrSet, SEVEN_DAYS_MS } from "../lib/cache.js";
+import { describeFetchError } from "../lib/fetchError.js";
 
 // La política de uso de Overpass (como la de Nominatim) exige un User-Agent que
 // identifique a la aplicación. `fetch` de Node manda "node" a secas, y el proxy de
@@ -140,6 +141,10 @@ async function queryOverpass(query: string): Promise<OverpassResponse> {
           "User-Agent": USER_AGENT,
         },
         body: new URLSearchParams({ data: query }).toString(),
+        // Sin esto, una instancia que ni conecta ni responde se queda colgada
+        // sin límite claro. 30s da margen sobre el [timeout:25] de la propia
+        // consulta Overpass, para no abortar una respuesta que sí iba a llegar.
+        signal: AbortSignal.timeout(30_000),
       });
 
       if (!res.ok) {
@@ -148,7 +153,7 @@ async function queryOverpass(query: string): Promise<OverpassResponse> {
       }
       return (await res.json()) as OverpassResponse;
     } catch (error) {
-      failures.push(`${endpoint}: ${error instanceof Error ? error.message : "error de red"}`);
+      failures.push(`${endpoint}: ${describeFetchError(error)}`);
     }
   }
 

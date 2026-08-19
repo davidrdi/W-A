@@ -6,6 +6,7 @@ import type {
   Favorite,
   FavoritesResponse,
   FollowUpResponse,
+  OverviewResponse,
   QueryResponse,
   ScoredSpot,
   SpotExplanation,
@@ -55,6 +56,12 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
 
 export function fetchSpots(sport: Sport, locality: string): Promise<SpotsResponse> {
   return getJson<SpotsResponse>("/spots", { sport, locality });
+}
+
+// Vista general: un pin por cada zona precalculada de todo el país, sin pedir
+// localidad — es lo que se ve al elegir deporte, antes de buscar nada.
+export function fetchOverview(sport: Sport): Promise<OverviewResponse> {
+  return getJson<OverviewResponse>("/overview", { sport });
 }
 
 export function fetchWeather(locality: string): Promise<WeatherResponse> {

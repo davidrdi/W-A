@@ -63,6 +63,13 @@ describe("findSpots", () => {
     expect(fetchMock.mock.calls.length).toBeGreaterThan(1);
   });
 
+  it("cuando fetch falla a nivel de red, el error dice la causa real, no solo \"fetch failed\"", async () => {
+    const dnsFailure = new Error("getaddrinfo ENOTFOUND overpass-api.de");
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("fetch failed", { cause: dnsFailure })));
+
+    await expect(findSpots("bici", 3_600_000_109)).rejects.toThrow(/ENOTFOUND/);
+  });
+
   it("cae a la siguiente instancia cuando la primera rechaza la petición (p.ej. 406)", async () => {
     const fetchMock = vi
       .fn()

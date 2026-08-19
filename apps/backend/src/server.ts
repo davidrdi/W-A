@@ -5,6 +5,7 @@ import type { HealthResponse } from "@w-a/shared";
 import { registerExplainRoute } from "./routes/explain.js";
 import { registerFavoritesRoute } from "./routes/favorites.js";
 import { registerInternalNotifyRoute } from "./routes/internalNotify.js";
+import { registerOverviewRoute } from "./routes/overview.js";
 import { registerPushTokensRoute } from "./routes/pushTokens.js";
 import { registerQueryRoute } from "./routes/query.js";
 import { registerRecommendRoute } from "./routes/recommend.js";
@@ -24,6 +25,7 @@ app.get("/health", async (): Promise<HealthResponse> => {
 
 await registerRecommendRoute(app);
 await registerSpotsRoute(app);
+await registerOverviewRoute(app);
 await registerSpotScoresRoute(app);
 await registerExplainRoute(app);
 await registerWeatherRoute(app);

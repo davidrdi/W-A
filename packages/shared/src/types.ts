@@ -81,6 +81,22 @@ export interface ScoredSpot extends Spot {
  */
 export type ZonesSource = "osm" | "seed";
 
+export interface OverviewSpot extends ScoredSpot {
+  locality: string;
+}
+
+/**
+ * Vista general por deporte, sin localidad: un pin por cada zona precalculada
+ * de todo el país, para verse de golpe al elegir deporte, sin tener que
+ * buscar ni hacer zoom. Se sirve siempre desde el conjunto precalculado —
+ * pedir esto en vivo contra Overpass para todo el país en cada carga no es
+ * viable con APIs públicas que limitan por IP.
+ */
+export interface OverviewResponse {
+  sport: Sport;
+  spots: OverviewSpot[];
+}
+
 export interface SpotsResponse {
   locality: string;
   sport: Sport;

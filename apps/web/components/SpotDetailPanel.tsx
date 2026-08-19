@@ -99,9 +99,11 @@ export function SpotDetailPanel({ spot, distanceLabel, nearbySpots = [], onClose
   const askAi = async () => {
     setAi({ kind: "loading" });
     try {
+      // El backend rechaza más de 20 candidatas (400): en modo vista general
+      // nearbySpots puede cubrir todo el país, así que se recorta aquí.
       const data = await fetchAlternatives(
         { sport: spot.sport, spotId: spot.id, name: spot.name, lat: spot.lat, lon: spot.lon },
-        nearbySpots.map((s) => ({ spotId: s.id, name: s.name, lat: s.lat, lon: s.lon })),
+        nearbySpots.slice(0, 20).map((s) => ({ spotId: s.id, name: s.name, lat: s.lat, lon: s.lon })),
       );
       setAi({ kind: "ready", data });
     } catch (error) {

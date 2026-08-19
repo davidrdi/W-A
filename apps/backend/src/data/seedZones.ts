@@ -204,6 +204,37 @@ export function findSeedLocality(query: string): SeedLocalityMatch | null {
   return { displayName: match.displayName, lat: match.lat, lon: match.lon, zones: match.zones };
 }
 
+export interface OverviewZone {
+  locality: string;
+  id: string;
+  name: string;
+  lat: number;
+  lon: number;
+}
+
+/**
+ * Todas las zonas del deporte pedido, de todas las localidades precalculadas
+ * a la vez. Es la base de la vista general del mapa ("ver el estado a nivel
+ * de España sin dar a buscar"): un vistazo así sobre datos en vivo pediría
+ * Overpass para todo el país en cada carga, lo que no es viable con APIs
+ * públicas que limitan por IP. Sobre este conjunto fijo solo hace falta pedir
+ * meteo (una llamada por lote, cacheada), así que sale barato e instantáneo.
+ */
+export function allSeedZones(sport: Sport): OverviewZone[] {
+  const category = SPORT_CATEGORY[sport];
+  return LOCALITIES.flatMap((locality) =>
+    locality.zones
+      .filter((zone) => zone.categories.includes(category))
+      .map((zone) => ({
+        locality: locality.displayName,
+        id: `seed/${normalize(zone.name).replace(/\s+/g, "-")}`,
+        name: zone.name,
+        lat: zone.lat,
+        lon: zone.lon,
+      })),
+  );
+}
+
 export function seedSpotsFor(locality: SeedLocalityMatch, sport: Sport, limit: number): Spot[] {
   const category = SPORT_CATEGORY[sport];
   return locality.zones

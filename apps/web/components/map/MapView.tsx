@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Map as LeafletMap, Marker } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { buildPinHtml, type LatLon, type ScoreBand, type Sport } from "@w-a/shared";
@@ -29,6 +29,13 @@ export default function MapView({ spots, center, zoom = 12, fitToSpots = false, 
   const markersRef = useRef<Marker[]>([]);
   const onSelectSpotRef = useRef(onSelectSpot);
   onSelectSpotRef.current = onSelectSpot;
+  // El resto de efectos dependen de esto (no solo de `mapRef.current`) para
+  // volver a ejecutarse en cuanto el mapa exista. Sin este flag, unos spots
+  // que llegan (p.ej. de una respuesta ya cacheada, casi instantánea) antes
+  // de que termine el `import("leaflet")` asíncrono de abajo se pierden: el
+  // efecto de pintar marcadores mira `mapRef.current`, lo ve `null`, y no
+  // vuelve a dispararse solo porque el mapa se cree después.
+  const [mapReady, setMapReady] = useState(false);
 
   // El mapa se crea una sola vez; el resto de efectos lo actualizan.
   useEffect(() => {
@@ -52,6 +59,7 @@ export default function MapView({ spots, center, zoom = 12, fitToSpots = false, 
       }).addTo(map);
 
       mapRef.current = map;
+      setMapReady(true);
       setTimeout(() => map.invalidateSize(), 100);
     });
 
@@ -66,7 +74,7 @@ export default function MapView({ spots, center, zoom = 12, fitToSpots = false, 
   // Recentra el mapa cuando cambia la localidad buscada (no cuando solo cambian los spots).
   useEffect(() => {
     mapRef.current?.setView([center.lat, center.lon], zoom, { animate: true });
-  }, [center.lat, center.lon, zoom]);
+  }, [center.lat, center.lon, zoom, mapReady]);
 
   // Pinta los marcadores (limpia y repinta; el número de spots por búsqueda es pequeño).
   useEffect(() => {
@@ -108,7 +116,7 @@ export default function MapView({ spots, center, zoom = 12, fitToSpots = false, 
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [spots, fitToSpots]);
+  }, [spots, fitToSpots, mapReady]);
 
   return <div ref={containerRef} className="h-full w-full" />;
 }

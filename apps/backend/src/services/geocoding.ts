@@ -1,4 +1,5 @@
 import { getOrSet, THIRTY_DAYS_MS } from "../lib/cache.js";
+import { describeFetchError } from "../lib/fetchError.js";
 
 const NOMINATIM_URL = "https://nominatim.openstreetmap.org/search";
 // Photon (Komoot) también va sobre datos de OSM y devuelve osm_type/osm_id, que es lo
@@ -98,7 +99,12 @@ async function fromNominatim(query: string): Promise<Candidate[]> {
   url.searchParams.set("countrycodes", "es");
   url.searchParams.set("limit", "5");
 
-  const res = await fetch(url, { headers: { "User-Agent": USER_AGENT } });
+  const res = await fetch(url, {
+    headers: { "User-Agent": USER_AGENT },
+    signal: AbortSignal.timeout(10_000),
+  }).catch((error) => {
+    throw new Error(describeFetchError(error));
+  });
   if (!res.ok) {
     throw new Error(`Nominatim respondió ${res.status}`);
   }
@@ -122,7 +128,12 @@ async function fromPhoton(query: string): Promise<Candidate[]> {
   url.searchParams.set("limit", "10");
   url.searchParams.set("lang", "es");
 
-  const res = await fetch(url, { headers: { "User-Agent": USER_AGENT } });
+  const res = await fetch(url, {
+    headers: { "User-Agent": USER_AGENT },
+    signal: AbortSignal.timeout(10_000),
+  }).catch((error) => {
+    throw new Error(describeFetchError(error));
+  });
   if (!res.ok) {
     throw new Error(`Photon respondió ${res.status}`);
   }
