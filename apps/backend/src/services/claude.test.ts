@@ -7,7 +7,7 @@ vi.mock("@anthropic-ai/sdk", () => ({
 }));
 
 import { __clearMemoryCache } from "../lib/cache.js";
-import { askFollowUp, explainSpot, parseQueryIntent, rankSpots } from "./claude.js";
+import { askFollowUp, parseQueryIntent, rankSpots, recommendAlternatives } from "./claude.js";
 
 const PAYLOAD = {
   sport: "running" as const,
@@ -24,43 +24,71 @@ const PAYLOAD = {
   },
 };
 
-describe("explainSpot", () => {
+const NEARBY = [
+  {
+    spotId: "way/9",
+    spotName: "Playa de Riazor",
+    score: 80,
+    distanceKm: 3.2,
+    weather: PAYLOAD.weather,
+  },
+];
+
+describe("recommendAlternatives", () => {
   beforeEach(() => {
     mockCreate.mockReset();
     // La IA se cachea por payload: sin esto un test reutiliza la respuesta del anterior.
     __clearMemoryCache();
   });
 
-  it("devuelve los campos del tool_use de Claude", async () => {
+  it("devuelve el veredicto y las alternativas del tool_use", async () => {
     mockCreate.mockResolvedValue({
       content: [
         {
           type: "tool_use",
-          name: "explicar_zona",
-          input: { headline: "Buen día para correr", reasoning: "Sin lluvia y con poco viento.", cautions: [] },
+          name: "recomendar_alternativas",
+          input: {
+            verdict: "Recibe viento de costado de 38 km/h.",
+            alternatives: [{ spot_id: "way/9", why: "A 3,2 km y resguardada del norte." }],
+          },
         },
       ],
     });
 
-    const result = await explainSpot(PAYLOAD);
+    const result = await recommendAlternatives(PAYLOAD, NEARBY);
 
     expect(result).toEqual({
-      headline: "Buen día para correr",
-      reasoning: "Sin lluvia y con poco viento.",
-      cautions: [],
+      verdict: "Recibe viento de costado de 38 km/h.",
+      alternatives: [{ spotId: "way/9", why: "A 3,2 km y resguardada del norte." }],
     });
-    expect(mockCreate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        tool_choice: { type: "tool", name: "explicar_zona" },
-        messages: [{ role: "user", content: JSON.stringify(PAYLOAD) }],
-      }),
-    );
+  });
+
+  it("descarta las zonas que Claude no haya sacado del payload", async () => {
+    mockCreate.mockResolvedValue({
+      content: [
+        {
+          type: "tool_use",
+          input: {
+            verdict: "v",
+            alternatives: [
+              { spot_id: "way/9", why: "existe en el payload" },
+              { spot_id: "way/inventada", why: "esta no estaba" },
+            ],
+          },
+        },
+      ],
+    });
+
+    const result = await recommendAlternatives(PAYLOAD, NEARBY);
+
+    // No puede colar una playa que no exista: solo pasan los ids del payload.
+    expect(result.alternatives).toEqual([{ spotId: "way/9", why: "existe en el payload" }]);
   });
 
   it("lanza un error legible si Claude no devuelve tool_use", async () => {
     mockCreate.mockResolvedValue({ content: [{ type: "text", text: "no debería pasar" }] });
 
-    await expect(explainSpot(PAYLOAD)).rejects.toThrow("Claude no devolvió una explicación estructurada");
+    await expect(recommendAlternatives(PAYLOAD, NEARBY)).rejects.toThrow("Claude no devolvió alternativas estructuradas");
   });
 });
 
@@ -178,12 +206,12 @@ describe("caché de respuestas de la IA", () => {
 
   it("no vuelve a llamar a Claude si el payload es idéntico (abrir el mismo pin dos veces)", async () => {
     mockCreate.mockResolvedValue({
-      content: [{ type: "tool_use", input: { headline: "h", reasoning: "r", cautions: [] } }],
+      content: [{ type: "tool_use", input: { verdict: "v", alternatives: [] } }],
     });
 
-    await explainSpot(PAYLOAD);
-    await explainSpot(PAYLOAD);
-    await explainSpot(PAYLOAD);
+    await recommendAlternatives(PAYLOAD, NEARBY);
+    await recommendAlternatives(PAYLOAD, NEARBY);
+    await recommendAlternatives(PAYLOAD, NEARBY);
 
     // Sin caché esto eran tres llamadas a Opus facturadas.
     expect(mockCreate).toHaveBeenCalledTimes(1);
@@ -191,22 +219,22 @@ describe("caché de respuestas de la IA", () => {
 
   it("sí vuelve a llamar cuando cambian los datos (otro score, otra meteo)", async () => {
     mockCreate.mockResolvedValue({
-      content: [{ type: "tool_use", input: { headline: "h", reasoning: "r", cautions: [] } }],
+      content: [{ type: "tool_use", input: { verdict: "v", alternatives: [] } }],
     });
 
-    await explainSpot(PAYLOAD);
-    await explainSpot({ ...PAYLOAD, score: 40, scoreBand: "amber" as const });
+    await recommendAlternatives(PAYLOAD, NEARBY);
+    await recommendAlternatives({ ...PAYLOAD, score: 40, scoreBand: "amber" as const }, NEARBY);
 
     expect(mockCreate).toHaveBeenCalledTimes(2);
   });
 
   it("no cachea los errores: un fallo transitorio no queda servido durante horas", async () => {
     mockCreate.mockResolvedValueOnce({ content: [{ type: "text", text: "sin tool_use" }] });
-    await expect(explainSpot(PAYLOAD)).rejects.toThrow();
+    await expect(recommendAlternatives(PAYLOAD, NEARBY)).rejects.toThrow();
 
     mockCreate.mockResolvedValueOnce({
-      content: [{ type: "tool_use", input: { headline: "ok", reasoning: "r", cautions: [] } }],
+      content: [{ type: "tool_use", input: { verdict: "ok", alternatives: [] } }],
     });
-    await expect(explainSpot(PAYLOAD)).resolves.toMatchObject({ headline: "ok" });
+    await expect(recommendAlternatives(PAYLOAD, NEARBY)).resolves.toMatchObject({ verdict: "ok" });
   });
 });

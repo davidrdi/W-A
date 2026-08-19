@@ -140,7 +140,12 @@ export function BuscarTab() {
         </>
       )}
 
-      <SpotDetailPanel spot={selectedSpot} distanceLabel={selectedDistanceLabel} onClose={() => setSelectedSpot(null)} />
+      <SpotDetailPanel
+        spot={selectedSpot}
+        distanceLabel={selectedDistanceLabel}
+        nearbySpots={result?.spots ?? []}
+        onClose={() => setSelectedSpot(null)}
+      />
     </div>
   );
 }

@@ -94,9 +94,8 @@ test.describe("pestaña Mapa: pines de las zonas encontradas", () => {
         body: JSON.stringify({
           score: 82,
           scoreBand: "green",
-          headline: "Buen día para correr",
-          reasoning: "Sin lluvia ayer y viento flojo.",
-          cautions: [],
+          headline: "Buenas condiciones",
+          factors: [{ label: "Viento", detail: "8 km/h", impact: -3 }],
           groundingPayload: {
             sport: "running",
             spotName: "Parque de Santa Margarita",

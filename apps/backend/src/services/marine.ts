@@ -1,4 +1,4 @@
-import type { MarineSnapshot } from "@w-a/shared";
+import type { MarineSnapshot, TideEvent } from "@w-a/shared";
 import { getOrSet, ONE_HOUR_MS } from "../lib/cache.js";
 
 // Host distinto del forecast normal.
@@ -8,6 +8,8 @@ interface MarineHourly {
   time: string[];
   wave_height: (number | null)[];
   sea_surface_temperature: (number | null)[];
+  /** Nivel del mar sobre el nivel medio: la curva de marea. */
+  sea_level_height_msl?: (number | null)[];
 }
 
 interface MarineResponse {
@@ -23,6 +25,40 @@ function average(values: number[]) {
   return values.length === 0 ? 0 : values.reduce((a, b) => a + b, 0) / values.length;
 }
 
+/**
+ * Saca pleamares y bajamares de la curva horaria de nivel del mar buscando
+ * máximos y mínimos locales (un punto más alto —o más bajo— que sus dos
+ * vecinos).
+ *
+ * Con datos horarios el instante exacto del pico tiene una incertidumbre de
+ * ~1 h; sirve para orientar ("baja sobre las 14:00"), no para calcular una
+ * tabla de mareas náutica. Si el punto no trae el dato (pasa en partes de la
+ * malla marina), se devuelve vacío en vez de inventar horas.
+ */
+export function extractTides(hourly: MarineHourly): TideEvent[] {
+  const levels = hourly.sea_level_height_msl;
+  if (!levels || levels.length < 3) return [];
+
+  const tides: TideEvent[] = [];
+  for (let i = 1; i < levels.length - 1; i++) {
+    const prev = levels[i - 1];
+    const curr = levels[i];
+    const next = levels[i + 1];
+    if (prev == null || curr == null || next == null) continue;
+
+    const isHigh = curr > prev && curr >= next;
+    const isLow = curr < prev && curr <= next;
+    if (!isHigh && !isLow) continue;
+
+    tides.push({
+      time: hourly.time[i],
+      kind: isHigh ? "pleamar" : "bajamar",
+      heightM: round(curr, 2),
+    });
+  }
+  return tides;
+}
+
 export async function getMarineSnapshots(coords: { lat: number; lon: number }[]): Promise<MarineSnapshot[]> {
   if (coords.length === 0) return [];
 
@@ -32,7 +68,10 @@ export async function getMarineSnapshots(coords: { lat: number; lon: number }[])
     const url = new URL(MARINE_URL);
     url.searchParams.set("latitude", coords.map((c) => c.lat).join(","));
     url.searchParams.set("longitude", coords.map((c) => c.lon).join(","));
-    url.searchParams.set("hourly", "wave_height,sea_surface_temperature");
+    // sea_level_height_msl es la curva de marea. Open-Meteo Marine no da
+    // pleamares/bajamares ya calculadas, así que se derivan de sus máximos y
+    // mínimos locales (ver extractTides).
+    url.searchParams.set("hourly", "wave_height,sea_surface_temperature,sea_level_height_msl");
     url.searchParams.set("forecast_days", "1");
     url.searchParams.set("timezone", "auto");
 
@@ -54,6 +93,7 @@ export async function getMarineSnapshots(coords: { lat: number; lon: number }[])
         waveHeightAvgM: round(average(waves), 2),
         waveHeightMaxM: round(waves.length ? Math.max(...waves) : 0, 2),
         seaSurfaceTempC: round(average(temps), 1),
+        tides: extractTides(entry.hourly),
       };
     });
   });

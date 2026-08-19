@@ -89,10 +89,47 @@ export interface SpotsResponse {
   source: ZonesSource;
 }
 
+/**
+ * Un motivo concreto por el que una zona puntúa como puntúa. Sale del cálculo
+ * determinista (scoring/rules.ts), no de la IA: es gratis, instantáneo y
+ * siempre está disponible aunque no haya suscripción ni saldo de API.
+ */
+export interface ScoreFactor {
+  /** Qué es, en corto: "Viento", "Barro de la lluvia de ayer". */
+  label: string;
+  /** El dato que lo respalda: "45 km/h", "18 mm". */
+  detail: string;
+  /** Cuánto suma o resta al score (negativo penaliza). */
+  impact: number;
+}
+
+export interface ScoreBreakdown {
+  score: number;
+  scoreBand: ScoreBand;
+  /** Ordenados por impacto: lo que más pesa, primero. */
+  factors: ScoreFactor[];
+  /** Diagnóstico en una línea, derivado del factor dominante. */
+  headline: string;
+}
+
+export interface TideEvent {
+  /** ISO local del pico o valle de marea. */
+  time: string;
+  kind: "pleamar" | "bajamar";
+  /** Altura sobre el nivel medio del mar, en metros. */
+  heightM: number;
+}
+
 export interface MarineSnapshot {
   waveHeightAvgM: number;
   waveHeightMaxM: number;
   seaSurfaceTempC: number;
+  /**
+   * Pleamares y bajamares de hoy, derivadas de la curva horaria de nivel del
+   * mar. Puede venir vacío: no todos los puntos de la malla marina traen ese
+   * dato, y en ese caso es mejor no enseñar mareas que enseñarlas inventadas.
+   */
+  tides?: TideEvent[];
 }
 
 // Datos ya calculados que se le pasan a Claude para que razone sobre ellos
@@ -110,13 +147,35 @@ export interface SpotGroundingPayload {
   amenities?: SpotAmenities;
 }
 
+/**
+ * Ficha de una zona al tocar su pin. Todo lo de aquí es determinista y gratis
+ * (métricas + diagnóstico del scoring): se sirve siempre, aunque no haya
+ * suscripción ni saldo de API. Lo que aporta la IA —recomendar zonas
+ * alternativas cercanas— va aparte, en /explain/alternatives.
+ */
 export interface SpotExplanation {
   score: number;
   scoreBand: ScoreBand;
+  /** Diagnóstico en una línea: "Viento: 45 km/h". */
   headline: string;
-  reasoning: string;
-  cautions: string[];
+  /** Motivos concretos, ordenados por cuánto pesan. */
+  factors: ScoreFactor[];
   groundingPayload: SpotGroundingPayload;
+}
+
+export interface AlternativeSpot {
+  spotId: string;
+  name: string;
+  score: number;
+  distanceKm: number;
+  /** Por qué merece el desplazamiento, con el dato que lo respalda. */
+  why: string;
+}
+
+/** Respuesta de la función premium con IA: a qué otra zona ir y por qué. */
+export interface AlternativesResponse {
+  verdict: string;
+  alternatives: AlternativeSpot[];
 }
 
 export interface ChatMessage {

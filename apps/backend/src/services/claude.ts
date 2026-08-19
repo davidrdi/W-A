@@ -29,11 +29,35 @@ function cacheKey(kind: string, payload: unknown): string {
   return `ai:${kind}:${digest}`;
 }
 
+// Prompt caching: el prefijo estable (tools + system) se marca como cacheable,
+// así que las llamadas repetidas no vuelven a pagar esos tokens a precio
+// completo. AVISO: Anthropic solo cachea prefijos de ~1024 tokens o más, y
+// nuestros system prompts andan por los 200-400; hoy esto NO llega a activarse
+// y no hay ahorro. Se deja puesto porque es gratis y entra solo en cuanto los
+// prompts crezcan. El ahorro real hoy lo da getOrSet() de arriba, que cachea la
+// respuesta entera por payload: en una repetición no se llama a la API en
+// absoluto, que es mejor que un descuento del 90%.
 const MODEL = "claude-opus-5";
 // Barato y rápido — solo para extraer intención del cuestionario, sin
 // razonar sobre meteo. La calidad de la explicación (donde importa el
 // diferencial del producto) usa siempre el modelo grande.
 const INTENT_MODEL = "claude-haiku-4-5-20251001";
+
+const ALTERNATIVES_SYSTEM_PROMPT = `Eres el asistente de una app que recomienda dónde practicar
+deporte al aire libre en España. Se te da una zona que el usuario ha seleccionado (con su score
+0-100 ya calculado y sus datos reales) y una lista de zonas cercanas, cada una con su score, su
+distancia en km y sus propios datos.
+
+Tu trabajo es doble:
+1. "verdict": en 1-2 frases, di qué limita la zona seleccionada citando el dato concreto que lo
+   explica (ej. "recibe viento de costado de 38 km/h, incómodo para estar en la playa").
+2. "alternatives": de las zonas cercanas del payload, las que de verdad mejoren la seleccionada,
+   de mejor a peor, cada una con una frase de por qué. Si ninguna la mejora de forma clara,
+   devuelve la lista vacía y dilo en el verdict — no rellenes por rellenar.
+
+Usa SOLO los spot_id que vengan en el payload; no inventes zonas, playas ni localidades, ni
+datos meteorológicos que no estén ahí. Menciona siempre la distancia cuando propongas una
+alternativa, que es lo que decide si compensa moverse.`;
 
 const SYSTEM_PROMPT = `Eres el asistente de una app que recomienda dónde practicar deporte al
 aire libre en España. Se te da un payload JSON con datos reales ya calculados (meteo de hoy,
@@ -71,42 +95,83 @@ function getClient(): Anthropic {
   return cachedClient;
 }
 
-const EXPLAIN_TOOL = {
-  name: "explicar_zona",
-  description: "Devuelve la explicación estructurada de por qué una zona tiene ese score",
+const ALTERNATIVES_TOOL = {
+  name: "recomendar_alternativas",
+  description: "Recomienda zonas alternativas cercanas mejores que la seleccionada",
   input_schema: {
     type: "object" as const,
     properties: {
-      headline: { type: "string", description: "Titular corto, ej. 'Buen día para correr aquí'" },
-      reasoning: { type: "string", description: "1-3 frases explicando el porqué, citando los datos del payload" },
-      cautions: {
+      verdict: {
+        type: "string",
+        description: "1-2 frases sobre la zona seleccionada, citando el dato que la limita",
+      },
+      alternatives: {
         type: "array",
-        items: { type: "string" },
-        description: "Avisos concretos si los hay (barro, viento racheado...); array vacío si no hay ninguno",
+        description: "Zonas alternativas del payload, de mejor a peor. Vacío si ninguna mejora la actual.",
+        items: {
+          type: "object",
+          properties: {
+            spot_id: { type: "string", description: "spot_id EXACTO de una de las zonas candidatas del payload" },
+            why: { type: "string", description: "Una frase: qué la hace mejor, con el dato que lo respalda" },
+          },
+          required: ["spot_id", "why"],
+        },
       },
     },
-    required: ["headline", "reasoning", "cautions"],
+    required: ["verdict", "alternatives"],
   },
 };
 
-type ExplanationFields = Pick<SpotExplanation, "headline" | "reasoning" | "cautions">;
+export interface AlternativeCandidate {
+  spotId: string;
+  spotName: string;
+  score: number;
+  distanceKm: number;
+  weather: WeatherSnapshot;
+  marine?: MarineSnapshot;
+}
 
-export async function explainSpot(payload: SpotGroundingPayload): Promise<ExplanationFields> {
-  return getOrSet(cacheKey("explain", payload), AI_CACHE_TTL_MS, async () => {
+export interface AlternativesResult {
+  verdict: string;
+  alternatives: { spotId: string; why: string }[];
+}
+
+/**
+ * Función premium: mira la zona elegida y las de alrededor y sugiere a cuál ir
+ * en su lugar. Es lo único que la IA aporta aquí — el diagnóstico de la zona
+ * seleccionada lo calcula el scoring determinista, gratis y sin llamadas.
+ */
+export async function recommendAlternatives(
+  selected: SpotGroundingPayload,
+  nearby: AlternativeCandidate[],
+): Promise<AlternativesResult> {
+  const payload = { selected, nearby };
+
+  return getOrSet(cacheKey("alternatives", payload), AI_CACHE_TTL_MS, async () => {
     const message = await getClient().messages.create({
       model: MODEL,
-      max_tokens: 500,
-      system: SYSTEM_PROMPT,
-      tools: [EXPLAIN_TOOL],
-      tool_choice: { type: "tool", name: EXPLAIN_TOOL.name },
+      max_tokens: 800,
+      system: [{ type: "text", text: ALTERNATIVES_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
+      tools: [ALTERNATIVES_TOOL],
+      tool_choice: { type: "tool", name: ALTERNATIVES_TOOL.name },
       messages: [{ role: "user", content: JSON.stringify(payload) }],
     });
 
     const toolUse = message.content.find((block) => block.type === "tool_use");
     if (!toolUse || toolUse.type !== "tool_use") {
-      throw new Error("Claude no devolvió una explicación estructurada");
+      throw new Error("Claude no devolvió alternativas estructuradas");
     }
-    return toolUse.input as ExplanationFields;
+    const input = toolUse.input as { verdict: string; alternatives: { spot_id: string; why: string }[] };
+
+    const validIds = new Set(nearby.map((c) => c.spotId));
+    return {
+      verdict: input.verdict,
+      // Defensa: nunca dejamos pasar una zona que no estuviera en el payload,
+      // para que no pueda inventarse una playa que no existe.
+      alternatives: input.alternatives
+        .filter((a) => validIds.has(a.spot_id))
+        .map((a) => ({ spotId: a.spot_id, why: a.why })),
+    };
   });
 }
 
@@ -182,7 +247,7 @@ export async function parseQueryIntent(text: string): Promise<ParsedIntent> {
     const message = await getClient().messages.create({
       model: INTENT_MODEL,
       max_tokens: 300,
-      system: INTENT_SYSTEM_PROMPT,
+      system: [{ type: "text", text: INTENT_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
       tools: [INTENT_TOOL],
       tool_choice: { type: "tool", name: INTENT_TOOL.name },
       messages: [{ role: "user", content: text }],
@@ -270,7 +335,7 @@ export async function rankSpots(
     const message = await getClient().messages.create({
       model: MODEL,
       max_tokens: 1500,
-      system: RANK_SYSTEM_PROMPT,
+      system: [{ type: "text", text: RANK_SYSTEM_PROMPT, cache_control: { type: "ephemeral" } }],
       tools: [RANK_TOOL],
       tool_choice: { type: "tool", name: RANK_TOOL.name },
       messages: [{ role: "user", content: JSON.stringify(payload) }],

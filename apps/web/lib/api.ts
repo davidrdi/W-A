@@ -1,4 +1,5 @@
 import type {
+  AlternativesResponse,
   ChatMessage,
   CreateFavoriteRequest,
   ExplainRequest,
@@ -74,6 +75,13 @@ export function explainSpot(spot: ScoredSpot): Promise<SpotExplanation> {
     amenities: spot.amenities,
   };
   return postJson<SpotExplanation>("/explain", request);
+}
+
+export function fetchAlternatives(
+  selected: { sport: Sport; spotId: string; name: string; lat: number; lon: number },
+  nearby: { spotId: string; name: string; lat: number; lon: number }[],
+): Promise<AlternativesResponse> {
+  return postJson<AlternativesResponse>("/explain/alternatives", { selected, nearby });
 }
 
 export function askFollowUp(

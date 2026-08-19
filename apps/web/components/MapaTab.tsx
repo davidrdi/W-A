@@ -131,7 +131,12 @@ export function MapaTab() {
           ))}
       </div>
 
-      <SpotDetailPanel spot={selectedSpot} distanceLabel={selectedDistanceLabel} onClose={() => setSelectedSpot(null)} />
+      <SpotDetailPanel
+        spot={selectedSpot}
+        distanceLabel={selectedDistanceLabel}
+        nearbySpots={spots}
+        onClose={() => setSelectedSpot(null)}
+      />
     </div>
   );
 }
