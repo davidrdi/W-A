@@ -19,6 +19,7 @@ const CLEAR_DAY = {
   windMaxTodayKmh: 8,
   windDirectionMiddayDeg: 90,
   temperatureAvgTodayC: 18,
+  cloudCoverTodayPct: 20,
 };
 
 const SPAIN_AREA = { query: "España", displayName: "España", areaId: 3_600_001_311, lat: 40.4, lon: -3.7 };

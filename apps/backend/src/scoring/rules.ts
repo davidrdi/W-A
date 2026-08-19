@@ -151,6 +151,12 @@ export function explainPlaya(weather: WeatherSnapshot, marine: MarineSnapshot): 
     penalty("Viento", kmh(weather.windMaxTodayKmh), (weather.windMaxTodayKmh - 20) * 1.5, 30),
     tempFactor(weather, 20, 34, 3, 35),
     penalty("Oleaje", `${marine.waveHeightMaxM} m`, (marine.waveHeightMaxM - 1.2) * 15, 20),
+    // Playa "de tumbarse" quiere sol — sin lluvia ni viento pero muy nublado
+    // no es un día de playa, aunque el resto de factores salgan bien. No se
+    // aplica a running/paseo/senderismo/bici (ahí el sol no pesa igual, y
+    // menos sol puede ser hasta más cómodo) ni a surf/windsurf (no necesitan
+    // sol). Por debajo de 40% de nubes no penaliza nada.
+    penalty("Nublado", `${weather.cloudCoverTodayPct}% de nubes`, (weather.cloudCoverTodayPct - 40) * 0.5, 30),
   ]);
 }
 

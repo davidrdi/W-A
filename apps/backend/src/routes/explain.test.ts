@@ -24,6 +24,7 @@ const CLEAR_DAY = {
   windMaxTodayKmh: 8,
   windDirectionMiddayDeg: 90,
   temperatureAvgTodayC: 18,
+  cloudCoverTodayPct: 20,
 };
 
 describe("POST /explain", () => {

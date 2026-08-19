@@ -36,6 +36,7 @@ const weatherSchema = z.object({
   windMaxTodayKmh: z.number(),
   windDirectionMiddayDeg: z.number(),
   temperatureAvgTodayC: z.number(),
+  cloudCoverTodayPct: z.number(),
 });
 
 const marineSchema = z.object({

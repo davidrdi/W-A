@@ -19,6 +19,7 @@ const CLEAR_DAY = {
   windMaxTodayKmh: 12,
   windDirectionMiddayDeg: 90,
   temperatureAvgTodayC: 16,
+  cloudCoverTodayPct: 20,
 };
 
 const BEACH_DAY = {
@@ -28,6 +29,7 @@ const BEACH_DAY = {
   windMaxTodayKmh: 15,
   windDirectionMiddayDeg: 90,
   temperatureAvgTodayC: 27,
+  cloudCoverTodayPct: 20,
 };
 
 const FLAT_SEA = { waveHeightAvgM: 0.1, waveHeightMaxM: 0.15, seaSurfaceTempC: 19 };
@@ -69,6 +71,7 @@ describe("scoreRunning", () => {
       windMaxTodayKmh: 90,
       windDirectionMiddayDeg: 0,
       temperatureAvgTodayC: 40,
+      cloudCoverTodayPct: 20,
     };
     expect(scoreRunning(terrible)).toBe(0);
   });

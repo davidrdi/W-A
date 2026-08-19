@@ -1,4 +1,5 @@
 import type { MarineSnapshot, TideEvent } from "@w-a/shared";
+import { mapWithConcurrency } from "../lib/concurrency.js";
 import { getOrSet, hashKey, ONE_HOUR_MS } from "../lib/cache.js";
 
 // Host distinto del forecast normal.
@@ -7,6 +8,8 @@ const MARINE_URL = "https://marine-api.open-meteo.com/v1/marine";
 // Ver weather.ts: con listas grandes (todas las playas de España) una sola
 // URL con miles de pares lat/lon supera límites prácticos de longitud.
 const BATCH_SIZE = 100;
+// Máximo de lotes en vuelo a la vez — ver mapWithConcurrency.
+const BATCH_CONCURRENCY = 4;
 
 interface MarineHourly {
   time: string[];
@@ -110,6 +113,6 @@ async function fetchBatch(coords: { lat: number; lon: number }[]): Promise<Marin
 export async function getMarineSnapshots(coords: { lat: number; lon: number }[]): Promise<MarineSnapshot[]> {
   if (coords.length === 0) return [];
 
-  const batches = await Promise.all(chunk(coords, BATCH_SIZE).map(fetchBatch));
+  const batches = await mapWithConcurrency(chunk(coords, BATCH_SIZE), BATCH_CONCURRENCY, fetchBatch);
   return batches.flat();
 }

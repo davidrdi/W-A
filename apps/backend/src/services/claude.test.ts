@@ -21,6 +21,7 @@ const PAYLOAD = {
     windMaxTodayKmh: 8,
     windDirectionMiddayDeg: 90,
     temperatureAvgTodayC: 18,
+    cloudCoverTodayPct: 20,
   },
 };
 

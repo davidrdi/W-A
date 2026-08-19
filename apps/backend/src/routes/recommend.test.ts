@@ -27,6 +27,7 @@ const weatherFixture = {
   windMaxTodayKmh: 20,
   windDirectionMiddayDeg: 90,
   temperatureAvgTodayC: 18,
+  cloudCoverTodayPct: 20,
 };
 
 describe("GET /recommend", () => {

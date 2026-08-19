@@ -1,4 +1,5 @@
 import type { WeatherSnapshot } from "@w-a/shared";
+import { mapWithConcurrency } from "../lib/concurrency.js";
 import { getOrSet, hashKey, ONE_HOUR_MS } from "../lib/cache.js";
 
 const OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast";
@@ -8,6 +9,8 @@ const OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast";
 // longitud de muchos servidores/proxies intermedios. Se trocea en lotes
 // razonables y cada lote se pide (y cachea) por separado.
 const BATCH_SIZE = 100;
+// Máximo de lotes en vuelo a la vez — ver mapWithConcurrency.
+const BATCH_CONCURRENCY = 4;
 
 interface OpenMeteoHourly {
   time: string[];
@@ -15,6 +18,7 @@ interface OpenMeteoHourly {
   wind_speed_10m: number[];
   wind_direction_10m: number[];
   temperature_2m: number[];
+  cloud_cover: number[];
 }
 
 interface OpenMeteoResponse {
@@ -43,6 +47,7 @@ function daySummary(hourly: OpenMeteoHourly, date: string) {
   const rain = indices.reduce((sum, i) => sum + (hourly.precipitation[i] ?? 0), 0);
   const winds = indices.map((i) => hourly.wind_speed_10m[i] ?? 0);
   const temps = indices.map((i) => hourly.temperature_2m[i] ?? 0);
+  const clouds = indices.map((i) => hourly.cloud_cover[i] ?? 0);
   const middayIndex = indices[Math.min(12, indices.length - 1)] ?? indices[0];
 
   return {
@@ -51,6 +56,7 @@ function daySummary(hourly: OpenMeteoHourly, date: string) {
     windMaxKmh: round(Math.max(0, ...winds), 1),
     windDirectionDeg: middayIndex !== undefined ? Math.round(hourly.wind_direction_10m[middayIndex] ?? 0) : 0,
     temperatureAvgC: round(temps.reduce((a, b) => a + b, 0) / (temps.length || 1), 1),
+    cloudCoverPct: Math.round(clouds.reduce((a, b) => a + b, 0) / (clouds.length || 1)),
   };
 }
 
@@ -61,7 +67,7 @@ async function fetchBatch(coords: { lat: number; lon: number }[]): Promise<Weath
     const url = new URL(OPEN_METEO_URL);
     url.searchParams.set("latitude", coords.map((c) => c.lat).join(","));
     url.searchParams.set("longitude", coords.map((c) => c.lon).join(","));
-    url.searchParams.set("hourly", "precipitation,wind_speed_10m,wind_direction_10m,temperature_2m");
+    url.searchParams.set("hourly", "precipitation,wind_speed_10m,wind_direction_10m,temperature_2m,cloud_cover");
     url.searchParams.set("past_days", "1");
     url.searchParams.set("forecast_days", "1");
     url.searchParams.set("timezone", "auto");
@@ -86,6 +92,7 @@ async function fetchBatch(coords: { lat: number; lon: number }[]): Promise<Weath
         windMaxTodayKmh: t.windMaxKmh,
         windDirectionMiddayDeg: t.windDirectionDeg,
         temperatureAvgTodayC: t.temperatureAvgC,
+        cloudCoverTodayPct: t.cloudCoverPct,
       };
     });
   });
@@ -94,6 +101,6 @@ async function fetchBatch(coords: { lat: number; lon: number }[]): Promise<Weath
 export async function getWeatherSnapshots(coords: { lat: number; lon: number }[]): Promise<WeatherSnapshot[]> {
   if (coords.length === 0) return [];
 
-  const batches = await Promise.all(chunk(coords, BATCH_SIZE).map(fetchBatch));
+  const batches = await mapWithConcurrency(chunk(coords, BATCH_SIZE), BATCH_CONCURRENCY, fetchBatch);
   return batches.flat();
 }

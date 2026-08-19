@@ -19,6 +19,7 @@ const CLEAR_DAY = {
   windMaxTodayKmh: 12,
   windDirectionMiddayDeg: 90,
   temperatureAvgTodayC: 16,
+  cloudCoverTodayPct: 20,
 };
 
 describe("GET /weather", () => {

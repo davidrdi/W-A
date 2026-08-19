@@ -7,6 +7,7 @@ function hourlyFixture(dates: [string, string], rainByDate: [number, number]) {
   const wind_speed_10m: number[] = [];
   const wind_direction_10m: number[] = [];
   const temperature_2m: number[] = [];
+  const cloud_cover: number[] = [];
 
   dates.forEach((date, dayIndex) => {
     for (let hour = 0; hour < 24; hour++) {
@@ -16,10 +17,11 @@ function hourlyFixture(dates: [string, string], rainByDate: [number, number]) {
       wind_speed_10m.push(10 + dayIndex);
       wind_direction_10m.push(90 + dayIndex * 10);
       temperature_2m.push(15 + dayIndex);
+      cloud_cover.push(20);
     }
   });
 
-  return { time, precipitation, wind_speed_10m, wind_direction_10m, temperature_2m };
+  return { time, precipitation, wind_speed_10m, wind_direction_10m, temperature_2m, cloud_cover };
 }
 
 describe("getWeatherSnapshots", () => {

@@ -15,6 +15,7 @@ const CLEAR_DAY = {
   windMaxTodayKmh: 12,
   windDirectionMiddayDeg: 90,
   temperatureAvgTodayC: 27,
+  cloudCoverTodayPct: 20,
 };
 
 describe("GET /spot-scores", () => {

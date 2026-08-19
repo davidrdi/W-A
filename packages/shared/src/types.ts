@@ -47,6 +47,8 @@ export interface WeatherSnapshot {
   windMaxTodayKmh: number;
   windDirectionMiddayDeg: number;
   temperatureAvgTodayC: number;
+  /** Nubosidad media de hoy, 0-100%. */
+  cloudCoverTodayPct: number;
 }
 
 export interface RecommendedSpot extends Spot {

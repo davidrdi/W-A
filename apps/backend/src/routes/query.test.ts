@@ -21,6 +21,7 @@ const CLEAR_DAY = {
   windMaxTodayKmh: 12,
   windDirectionMiddayDeg: 90,
   temperatureAvgTodayC: 16,
+  cloudCoverTodayPct: 20,
 };
 
 const VIGO_AREA = { query: "Vigo", displayName: "Vigo, Galicia, España", areaId: 3_600_000_500, lat: 42.23, lon: -8.72 };

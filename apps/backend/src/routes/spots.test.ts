@@ -27,6 +27,7 @@ const CLEAR_DAY = {
   windMaxTodayKmh: 12,
   windDirectionMiddayDeg: 90,
   temperatureAvgTodayC: 16,
+  cloudCoverTodayPct: 20,
 };
 
 const MUDDY_DAY = { ...CLEAR_DAY, rainYesterdayMm: 30, rainTodayMm: 20 };
