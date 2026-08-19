@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { Map as LeafletMap, Marker } from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { buildPinHtml, type LatLon, type ScoreBand, type Sport } from "@w-a/shared";
+import { buildPinHtml, cardinalDirection, type LatLon, type ScoreBand, type Sport } from "@w-a/shared";
 
 export interface MapSpot {
   id: string;
@@ -13,6 +13,8 @@ export interface MapSpot {
   scoreBand: ScoreBand;
   name: string;
   description?: string;
+  windDirectionDeg?: number;
+  windAvgKmh?: number;
 }
 
 interface Props {
@@ -90,7 +92,7 @@ export default function MapView({ spots, center, zoom = 12, fitToSpots = false, 
       spots.forEach((spot) => {
         const icon = L.divIcon({
           className: "",
-          html: buildPinHtml(spot.sport, spot.scoreBand),
+          html: buildPinHtml(spot.sport, spot.scoreBand, spot.windDirectionDeg),
           iconSize: [32, 32],
           iconAnchor: [16, 32],
           popupAnchor: [0, -34],
@@ -100,9 +102,14 @@ export default function MapView({ spots, center, zoom = 12, fitToSpots = false, 
           .addTo(map)
           .on("click", () => onSelectSpotRef.current(spot.id));
 
-        if (spot.name || spot.description) {
+        const windLine =
+          spot.windDirectionDeg === undefined
+            ? ""
+            : `<div>Viento ${spot.windAvgKmh !== undefined ? `${Math.round(spot.windAvgKmh)} km/h ` : ""}del ${cardinalDirection(spot.windDirectionDeg)}</div>`;
+
+        if (spot.name || spot.description || windLine) {
           marker.bindPopup(
-            `<strong>${escapeHtml(spot.name)}</strong>${spot.description ? `<div>${escapeHtml(spot.description)}</div>` : ""}`,
+            `<strong>${escapeHtml(spot.name)}</strong>${spot.description ? `<div>${escapeHtml(spot.description)}</div>` : ""}${windLine}`,
             { className: "w-a-popup" },
           );
         }

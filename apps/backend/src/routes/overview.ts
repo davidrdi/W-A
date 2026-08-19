@@ -79,6 +79,8 @@ async function nationwideBeaches(sport: OverviewResponse["sport"]): Promise<Over
       score,
       scoreBand: scoreBandFor(score),
       amenities: beach.amenities,
+      windDirectionDeg: weatherSnapshots[i].windDirectionMiddayDeg,
+      windAvgKmh: weatherSnapshots[i].windAvgTodayKmh,
     };
   });
 
@@ -106,6 +108,8 @@ async function seedOverview(sport: OverviewResponse["sport"]): Promise<OverviewR
       sport,
       score,
       scoreBand: scoreBandFor(score),
+      windDirectionDeg: weatherSnapshots[i].windDirectionMiddayDeg,
+      windAvgKmh: weatherSnapshots[i].windAvgTodayKmh,
     };
   });
 

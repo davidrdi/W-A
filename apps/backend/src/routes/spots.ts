@@ -39,12 +39,24 @@ export async function registerSpotsRoute(app: FastifyInstance) {
       const marineSnapshots = await getMarineSnapshots(coords);
       scored = spots.map((spot, i) => {
         const score = scoreWaterSport(sport, weatherSnapshots[i], marineSnapshots[i]);
-        return { ...spot, score, scoreBand: scoreBandFor(score) };
+        return {
+          ...spot,
+          score,
+          scoreBand: scoreBandFor(score),
+          windDirectionDeg: weatherSnapshots[i].windDirectionMiddayDeg,
+          windAvgKmh: weatherSnapshots[i].windAvgTodayKmh,
+        };
       });
     } else {
       scored = spots.map((spot, i) => {
         const score = scoreLandSport(sport, weatherSnapshots[i]);
-        return { ...spot, score, scoreBand: scoreBandFor(score) };
+        return {
+          ...spot,
+          score,
+          scoreBand: scoreBandFor(score),
+          windDirectionDeg: weatherSnapshots[i].windDirectionMiddayDeg,
+          windAvgKmh: weatherSnapshots[i].windAvgTodayKmh,
+        };
       });
     }
 

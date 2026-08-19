@@ -65,6 +65,11 @@ describe("GET /spots", () => {
     expect(body.spots[1]).toMatchObject({ id: "way/2", scoreBand: "red" });
     expect(body.spots[0].weather).toBeUndefined();
     expect(getMarineSnapshots).not.toHaveBeenCalled();
+
+    // El viento va en el propio spot puntuado, no solo en /explain — es lo
+    // que permite pintar la flecha de viento directamente en el pin del mapa.
+    expect(body.spots[0].windDirectionDeg).toBe(90);
+    expect(body.spots[0].windAvgKmh).toBe(8);
   });
 
   it("para un deporte de agua, pide también datos marinos y los usa en el score", async () => {

@@ -79,17 +79,42 @@ export const SCORE_BAND_LABEL: Record<ScoreBand, string> = {
   red: "Evita hoy",
 };
 
+const CARDINAL_POINTS = ["N", "NE", "E", "SE", "S", "SO", "O", "NO"] as const;
+
+/**
+ * Punto cardinal (español, 8 rumbos) de dónde SOPLA el viento — misma
+ * convención meteorológica que `windDirectionMiddayDeg` (0°=norte, sentido
+ * horario). Ej. "NO" = viento que viene del noroeste.
+ */
+export function cardinalDirection(deg: number): string {
+  const normalized = ((deg % 360) + 360) % 360;
+  return CARDINAL_POINTS[Math.round(normalized / 45) % 8];
+}
+
 // HTML de un pin en forma de lágrima (border-radius 50% 50% 50% 0 +
 // rotate -45deg), igual que los marcadores de Trebo — el color codifica el
 // score de la zona, el icono el deporte. Pensado para L.divIcon en web
 // (apps/web) y equivalente a <SportPin> en mobile (mismo SPORT_ICON_SVG /
 // SCORE_BAND_COLOR, una sola fuente de verdad).
-export function buildPinHtml(sport: Sport, scoreBand: ScoreBand): string {
+//
+// windDirectionDeg (opcional) añade una flechita en la esquina superior
+// derecha del pin. Se rota a windDirectionDeg + 180°: `windDirectionDeg` es
+// de dónde SOPLA el viento (convención meteorológica estándar), pero una
+// flecha de mapa se lee más intuitivamente señalando hacia dónde VA el
+// viento (mismo criterio que usan Windy y apps de viento equivalentes).
+export function buildPinHtml(sport: Sport, scoreBand: ScoreBand, windDirectionDeg?: number): string {
   const color = SCORE_BAND_COLOR[scoreBand];
   const icon = SPORT_ICON_SVG[sport];
-  return `<div style="width:32px;height:32px;display:flex;align-items:center;justify-content:center;">
+  const windArrow =
+    windDirectionDeg === undefined
+      ? ""
+      : `<div style="position:absolute;top:-3px;right:-3px;width:14px;height:14px;border-radius:50%;background:#fff;border:1px solid rgba(0,0,0,.15);box-shadow:0 1px 3px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;transform:rotate(${windDirectionDeg + 180}deg);">
+        <svg width="8" height="8" viewBox="0 0 10 10"><path d="M5 0L9 8L5 6L1 8Z" fill="#334155"/></svg>
+      </div>`;
+  return `<div style="width:32px;height:32px;position:relative;display:flex;align-items:center;justify-content:center;">
     <div style="width:26px;height:26px;border-radius:13px 13px 13px 0;transform:rotate(-45deg);background:${color};border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;">
       <div style="transform:rotate(45deg);width:14px;height:14px;line-height:0;">${icon}</div>
     </div>
+    ${windArrow}
   </div>`;
 }

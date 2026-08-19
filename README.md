@@ -164,9 +164,42 @@ lotes de 100 y piden (y cachean) cada lote por separado.
 
 Los pines del mapa reutilizan el lenguaje visual de [Trebo](https://github.com/davidrdi/trebo)
 (otra app del mismo autor): forma de lágrima (`border-radius 50% 50% 50% 0` + rotación),
-icono blanco de 20x20 dentro. Aquí el color del pin codifica el **score** de la zona
-(verde/ámbar/rojo) en vez del deporte — el deporte lo identifica el icono. Los SVG están en
-`apps/mobile/src/mapIcons.ts`; el de playa es nuevo, en ese mismo estilo.
+icono blanco de 20x20 dentro. Aquí el color del pin codifica el **score** de la zona en vez del
+deporte — el deporte lo identifica el icono. Los SVG y `buildPinHtml` están en
+`packages/shared/src/mapIcons.ts` (una sola fuente para web y mobile); el de playa es nuevo, en
+ese mismo estilo.
+
+**Bandas de score**: 4, no 3 — verde (75-100) / amarillo (50-74) / naranja (25-49) / rojo (0-24),
+`ScoreBand` en `packages/shared/src/types.ts`, umbrales en `scoreBandFor()`
+(`apps/backend/src/scoring/rules.ts`). Con solo 3 bandas y el corte de verde en 70, en días de
+buen tiempo casi todas las zonas puntuaban por encima de 70 y el mapa se veía todo verde sin
+diferenciar bien entre "bien" y "muy bien".
+
+**Flecha de viento en el pin**: cada `ScoredSpot` lleva `windDirectionDeg`/`windAvgKmh` (de
+`weatherSnapshots[i].windDirectionMiddayDeg`, ya se pedía para el scoring — no es una llamada
+nueva). `buildPinHtml` pinta un badge circular en la esquina del pin rotado a
+`windDirectionDeg + 180`: `windDirectionDeg` es de dónde SOPLA el viento (convención
+meteorológica estándar de Open-Meteo), pero una flecha de mapa se lee más intuitivamente
+señalando hacia dónde VA el viento (mismo criterio que Windy). `cardinalDirection()` da el rumbo
+en texto (N/NE/E/SE/S/SO/O/NO) para el panel de detalle y el popup del pin.
+
+## Bandera Azul: investigado, no integrado todavía
+
+Existen datasets abiertos reales — confirmado por búsqueda web, no inventado: un catálogo
+nacional en datos.gob.es (`a01002820-banderas-azules`) y varios autonómicos con CSV/WFS/WMS
+(Andalucía, Comunitat Valenciana, Galicia...). No se ha integrado porque desde este entorno de
+desarrollo el acceso saliente a internet está bloqueado incluso para `WebFetch` (herramienta del
+agente, aparte del proxy que ya bloquea las llamadas del propio backend) — no ha sido posible
+inspeccionar la estructura real de ningún recurso (columnas, sistema de coordenadas, si hay uno
+nacional actualizado o hay que agregar varios autonómicos) para escribir un importador fiable sin
+arriesgarse a acertar por casualidad. Antes de intentarlo: alguien con acceso normal a internet
+tendría que abrir uno de esos enlaces y pegar la URL directa del recurso descargable (CSV/JSON) o
+unas filas de ejemplo.
+
+OSM tiene un tag `blue_flag=yes` que ya se leería gratis con el mismo patrón que
+`naturist`/`dog`/`lifeguard` (`parseAmenities` en `apps/backend/src/services/spots.ts`), pero su
+cobertura es muy incompleta — mostraría "no tiene" en playas que sí la tienen, peor que no
+mostrar nada. Descartado como fuente principal por eso.
 
 ## Deportes soportados
 

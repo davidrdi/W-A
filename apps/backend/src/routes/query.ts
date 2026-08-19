@@ -66,7 +66,9 @@ export async function registerQueryRoute(app: FastifyInstance) {
 
     const rankings = await rankSpots(text, intent.sport, rankingCandidates);
 
-    const byId = new Map(candidates.map((spot, i) => [spot.id, { spot, score: scores[i] }]));
+    const byId = new Map(
+      candidates.map((spot, i) => [spot.id, { spot, score: scores[i], weather: weatherSnapshots[i] }]),
+    );
     const seen = new Set<string>();
     const rankedSpots: RankedSpot[] = [];
 
@@ -78,6 +80,8 @@ export async function registerQueryRoute(app: FastifyInstance) {
         ...entry.spot,
         score: entry.score,
         scoreBand: scoreBandFor(entry.score),
+        windDirectionDeg: entry.weather.windDirectionMiddayDeg,
+        windAvgKmh: entry.weather.windAvgTodayKmh,
         headline: r.headline,
         reasoning: r.reasoning,
       });
@@ -85,8 +89,16 @@ export async function registerQueryRoute(app: FastifyInstance) {
     // Si Claude omitió algún candidato, se añade al final en vez de perderlo en silencio.
     for (const spot of candidates) {
       if (seen.has(spot.id)) continue;
-      const score = byId.get(spot.id)!.score;
-      rankedSpots.push({ ...spot, score, scoreBand: scoreBandFor(score), headline: spot.name, reasoning: "" });
+      const entry = byId.get(spot.id)!;
+      rankedSpots.push({
+        ...spot,
+        score: entry.score,
+        scoreBand: scoreBandFor(entry.score),
+        windDirectionDeg: entry.weather.windDirectionMiddayDeg,
+        windAvgKmh: entry.weather.windAvgTodayKmh,
+        headline: spot.name,
+        reasoning: "",
+      });
     }
 
     const response: QueryResponse = { intent, locality: zones.locality, localityCenter, spots: rankedSpots };

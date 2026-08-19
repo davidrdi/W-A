@@ -74,6 +74,15 @@ export type ScoreBand = "green" | "yellow" | "orange" | "red";
 export interface ScoredSpot extends Spot {
   score: number;
   scoreBand: ScoreBand;
+  /**
+   * Grados meteorológicos (0-360, de dónde SOPLA el viento — convención
+   * estándar de Open-Meteo, no hacia dónde va) a mediodía. Se lleva en el
+   * spot puntuado (no solo en el WeatherSnapshot completo de /explain) para
+   * poder pintar una flecha de viento directamente en el pin del mapa, sin
+   * tener que abrir el detalle de cada zona.
+   */
+  windDirectionDeg?: number;
+  windAvgKmh?: number;
 }
 
 /**

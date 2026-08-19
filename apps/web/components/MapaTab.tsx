@@ -103,6 +103,8 @@ export function MapaTab() {
     scoreBand: s.scoreBand,
     name: s.name,
     description: `Puntuación ${s.score}/100`,
+    windDirectionDeg: s.windDirectionDeg,
+    windAvgKmh: s.windAvgKmh,
   }));
 
   const selectedDistanceLabel =

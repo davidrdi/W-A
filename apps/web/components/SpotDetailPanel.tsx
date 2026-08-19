@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { AlternativesResponse, ScoredSpot, SpotExplanation, TideEvent } from "@w-a/shared";
-import { SCORE_BAND_COLOR, sunTimes } from "@w-a/shared";
+import { SCORE_BAND_COLOR, cardinalDirection, sunTimes } from "@w-a/shared";
 
 import { explainSpot, fetchAlternatives } from "../lib/api";
 import { useAuth } from "./auth/AuthProvider";
@@ -163,7 +163,10 @@ export function SpotDetailPanel({ spot, distanceLabel, nearbySpots = [], onClose
             </div>
 
             <div className="grid grid-cols-2 gap-2">
-              <Metric label="Viento" value={`${Math.round(weather.windAvgTodayKmh)} km/h`} />
+              <Metric
+                label="Viento"
+                value={`${Math.round(weather.windAvgTodayKmh)} km/h del ${cardinalDirection(weather.windDirectionMiddayDeg)}`}
+              />
               <Metric label="Rachas" value={`${Math.round(weather.windMaxTodayKmh)} km/h`} />
               <Metric label="Temperatura" value={`${Math.round(weather.temperatureAvgTodayC)} °C`} />
               <Metric label="Lluvia hoy" value={`${Math.round(weather.rainTodayMm)} mm`} />
