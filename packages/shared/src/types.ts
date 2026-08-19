@@ -73,11 +73,20 @@ export interface ScoredSpot extends Spot {
   scoreBand: ScoreBand;
 }
 
+/**
+ * De dónde salen las zonas: "osm" son datos en vivo de Overpass (lo normal),
+ * "seed" son las zonas precalculadas del repo, que entran cuando las APIs
+ * públicas de OSM fallan. Se expone para que la UI pueda avisarlo en vez de
+ * presentar unas y otras como si fueran lo mismo.
+ */
+export type ZonesSource = "osm" | "seed";
+
 export interface SpotsResponse {
   locality: string;
   sport: Sport;
   localityCenter: LatLon;
   spots: ScoredSpot[];
+  source: ZonesSource;
 }
 
 export interface MarineSnapshot {

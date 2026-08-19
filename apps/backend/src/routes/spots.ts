@@ -27,7 +27,7 @@ export async function registerSpotsRoute(app: FastifyInstance) {
     const { spots, localityCenter } = zones;
 
     if (spots.length === 0) {
-      const empty: SpotsResponse = { locality: zones.locality, sport, localityCenter, spots: [] };
+      const empty: SpotsResponse = { locality: zones.locality, sport, localityCenter, spots: [], source: zones.source };
       return empty;
     }
 
@@ -48,7 +48,13 @@ export async function registerSpotsRoute(app: FastifyInstance) {
       });
     }
 
-    const response: SpotsResponse = { locality: zones.locality, sport, localityCenter, spots: scored };
+    const response: SpotsResponse = {
+      locality: zones.locality,
+      sport,
+      localityCenter,
+      spots: scored,
+      source: zones.source,
+    };
     return response;
   });
 }

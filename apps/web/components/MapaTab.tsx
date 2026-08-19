@@ -15,7 +15,17 @@ const MapView = dynamic(() => import("./map/MapView"), { ssr: false });
 const SPORTS: Sport[] = ["running", "paseo", "senderismo", "bici", "playa", "surf", "windsurf"];
 const SPAIN_CENTER: LatLon = { lat: 40.2, lon: -3.7 };
 
-type SearchState = { kind: "idle" } | { kind: "loading" } | { kind: "error"; message: string } | { kind: "done" };
+type SearchState =
+  | { kind: "idle" }
+  | { kind: "loading" }
+  | { kind: "error"; message: string }
+  | { kind: "done"; locality: string; source: "osm" | "seed" };
+
+// Nominatim devuelve el nombre completo ("A Coruña, Galicia, España, 15001"),
+// demasiado largo para una línea de resumen.
+function shortLocality(displayName: string): string {
+  return displayName.split(",").slice(0, 2).join(",").trim();
+}
 
 export function MapaTab() {
   const [sport, setSport] = useState<Sport>("running");
@@ -32,7 +42,7 @@ export function MapaTab() {
       const result = await fetchSpots(sport, locality.trim());
       setSpots(result.spots);
       setLocalityCenter(result.localityCenter);
-      setState({ kind: "done" });
+      setState({ kind: "done", locality: result.locality, source: result.source });
     } catch (error) {
       setState({ kind: "error", message: error instanceof Error ? error.message : "No se pudo buscar" });
     }
@@ -106,11 +116,19 @@ export function MapaTab() {
           {state.kind === "loading" ? "Buscando…" : `Buscar zonas de ${SPORT_LABEL[sport].toLowerCase()}`}
         </button>
         {state.kind === "error" && <p className="text-sm text-danger">{state.message}</p>}
-        {state.kind === "done" && spots.length === 0 && (
-          <p className="text-sm text-textSecondary">
-            No se encontraron zonas de {SPORT_LABEL[sport].toLowerCase()} en esa localidad.
-          </p>
-        )}
+        {state.kind === "done" &&
+          (spots.length === 0 ? (
+            <p className="text-sm text-textSecondary">
+              No se encontraron zonas de {SPORT_LABEL[sport].toLowerCase()} en esa localidad.
+            </p>
+          ) : (
+            // Resumen explícito de la última búsqueda: sin él, "no veo pines"
+            // no se distingue de "no he llegado a buscar".
+            <p className="text-sm text-textSecondary">
+              {spots.length} {spots.length === 1 ? "zona" : "zonas"} en {shortLocality(state.locality)}
+              {state.source === "seed" && " · zonas precalculadas (OpenStreetMap no responde ahora mismo)"}
+            </p>
+          ))}
       </div>
 
       <SpotDetailPanel spot={selectedSpot} distanceLabel={selectedDistanceLabel} onClose={() => setSelectedSpot(null)} />

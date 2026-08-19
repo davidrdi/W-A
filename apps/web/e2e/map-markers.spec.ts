@@ -11,6 +11,7 @@ const OPAQUE_TILE_PNG = Buffer.from(
 const SPOTS_RESPONSE = {
   locality: "A Coruña, Galicia, España",
   sport: "running",
+  source: "osm",
   localityCenter: { lat: 43.3623, lon: -8.4115 },
   spots: [
     {
