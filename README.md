@@ -122,6 +122,21 @@ una vez conectado:
 El plan Free de Render "duerme" el servicio tras ~15 min sin tráfico — la primera petición
 después de dormido tarda ~30s en responder mientras arranca.
 
+### Caché persistente (tabla `api_cache` en Supabase)
+
+Todo lo caro y lento se cachea en Supabase, no solo en memoria: geocodificación
+(Nominatim/Photon), zonas de Overpass y respuestas de la IA. **Esto no es una optimización,
+es lo que hace que la app funcione**: como Render duerme el servicio cada 15 min, con caché
+solo en memoria cada despertar volvía a pegarle desde cero a las APIs públicas de OSM —que
+limitan por IP, y en Render la IP de salida es compartida— y devolvía 429/406. La geografía
+no cambia, así que se resuelve una vez y queda guardada (TTL: 30 días localidades, 7 días
+zonas, 3 h explicaciones de IA).
+
+Presupuesto de IA: las llamadas a Claude se cachean por el contenido exacto de la petición,
+así que abrir diez veces el mismo pin cuesta una sola llamada, y repetir una búsqueda no
+vuelve a pagar el parseo de intención. Los errores nunca se cachean. El SDK va con
+`maxRetries: 1` (por defecto son 2, es decir hasta 3 llamadas facturadas por cada fallo).
+
 ## Diseño de mapa
 
 Los pines del mapa reutilizan el lenguaje visual de [Trebo](https://github.com/davidrdi/trebo)

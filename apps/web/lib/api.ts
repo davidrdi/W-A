@@ -19,6 +19,14 @@ import type {
 // configurado en Vercel/​.env trae esa barra.
 const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3000").replace(/\/+$/, "");
 
+// Fastify pone el detalle útil en `message` ("Overpass respondió 406") y deja en
+// `error` el nombre genérico del status ("Internal Server Error"). Leyendo solo
+// `error` la UI enseñaba siempre "Internal Server Error" y había que ir a la
+// consola del navegador para enterarse de qué había fallado de verdad.
+function describeError(body: { error?: string; message?: string } | null, status: number): string {
+  return body?.message ?? body?.error ?? `Backend respondió ${status}`;
+}
+
 async function getJson<T>(path: string, params?: Record<string, string>): Promise<T> {
   const url = new URL(`${API_URL}${path}`);
   for (const [key, value] of Object.entries(params ?? {})) url.searchParams.set(key, value);
@@ -26,7 +34,7 @@ async function getJson<T>(path: string, params?: Record<string, string>): Promis
   const response = await fetch(url.toString());
   if (!response.ok) {
     const body = await response.json().catch(() => null);
-    throw new Error(body?.error ?? `Backend respondió ${response.status}`);
+    throw new Error(describeError(body, response.status));
   }
   return response.json();
 }
@@ -39,7 +47,7 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
   });
   if (!response.ok) {
     const errorBody = await response.json().catch(() => null);
-    throw new Error(errorBody?.error ?? `Backend respondió ${response.status}`);
+    throw new Error(describeError(errorBody, response.status));
   }
   return response.json();
 }
@@ -80,7 +88,7 @@ export async function fetchFavorites(accessToken: string): Promise<FavoritesResp
   const response = await fetch(`${API_URL}/favorites`, { headers: { Authorization: `Bearer ${accessToken}` } });
   if (!response.ok) {
     const body = await response.json().catch(() => null);
-    throw new Error(body?.error ?? `Backend respondió ${response.status}`);
+    throw new Error(describeError(body, response.status));
   }
   return response.json();
 }
@@ -93,7 +101,7 @@ export async function addFavorite(accessToken: string, input: CreateFavoriteRequ
   });
   if (!response.ok) {
     const body = await response.json().catch(() => null);
-    throw new Error(body?.error ?? `Backend respondió ${response.status}`);
+    throw new Error(describeError(body, response.status));
   }
   return response.json();
 }
@@ -105,6 +113,6 @@ export async function removeFavorite(accessToken: string, id: string): Promise<v
   });
   if (!response.ok) {
     const body = await response.json().catch(() => null);
-    throw new Error(body?.error ?? `Backend respondió ${response.status}`);
+    throw new Error(describeError(body, response.status));
   }
 }

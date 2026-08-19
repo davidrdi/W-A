@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import Anthropic from "@anthropic-ai/sdk";
 import type {
   ChatMessage,
@@ -11,7 +13,21 @@ import type {
   WeatherSnapshot,
 } from "@w-a/shared";
 
+import { getOrSet, ONE_HOUR_MS, THIRTY_DAYS_MS } from "../lib/cache.js";
 import { SPORT_VALUES } from "../lib/sport.js";
+
+// Las respuestas de la IA se cachean por el contenido EXACTO de la petición: si
+// nadie ha tocado el payload (mismo spot, mismo score, misma meteo), la respuesta
+// ya está escrita y no hay que volver a pagarla. Sin esto, abrir diez veces el
+// mismo pin eran diez llamadas a Opus. 3h se alinea con el TTL de la meteo: en
+// cuanto cambian los datos cambia el payload y la clave, así que nunca se sirve
+// una explicación que ya no cuadre con el tiempo actual.
+const AI_CACHE_TTL_MS = 3 * ONE_HOUR_MS;
+
+function cacheKey(kind: string, payload: unknown): string {
+  const digest = createHash("sha256").update(JSON.stringify(payload)).digest("hex").slice(0, 32);
+  return `ai:${kind}:${digest}`;
+}
 
 const MODEL = "claude-opus-5";
 // Barato y rápido — solo para extraer intención del cuestionario, sin
@@ -44,7 +60,13 @@ en el cuestionario de la app, donde sí aparecerá en el mapa con su distancia.`
 let cachedClient: Anthropic | null = null;
 function getClient(): Anthropic {
   if (!cachedClient) {
-    cachedClient = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    cachedClient = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY,
+      // El SDK reintenta 2 veces por defecto, así que una llamada podía costar
+      // hasta 3. Con Opus a $5/$25 por millón de tokens eso triplica la factura
+      // de cada fallo transitorio; 1 reintento ya cubre el corte de red puntual.
+      maxRetries: 1,
+    });
   }
   return cachedClient;
 }
@@ -70,20 +92,22 @@ const EXPLAIN_TOOL = {
 type ExplanationFields = Pick<SpotExplanation, "headline" | "reasoning" | "cautions">;
 
 export async function explainSpot(payload: SpotGroundingPayload): Promise<ExplanationFields> {
-  const message = await getClient().messages.create({
-    model: MODEL,
-    max_tokens: 500,
-    system: SYSTEM_PROMPT,
-    tools: [EXPLAIN_TOOL],
-    tool_choice: { type: "tool", name: EXPLAIN_TOOL.name },
-    messages: [{ role: "user", content: JSON.stringify(payload) }],
-  });
+  return getOrSet(cacheKey("explain", payload), AI_CACHE_TTL_MS, async () => {
+    const message = await getClient().messages.create({
+      model: MODEL,
+      max_tokens: 500,
+      system: SYSTEM_PROMPT,
+      tools: [EXPLAIN_TOOL],
+      tool_choice: { type: "tool", name: EXPLAIN_TOOL.name },
+      messages: [{ role: "user", content: JSON.stringify(payload) }],
+    });
 
-  const toolUse = message.content.find((block) => block.type === "tool_use");
-  if (!toolUse || toolUse.type !== "tool_use") {
-    throw new Error("Claude no devolvió una explicación estructurada");
-  }
-  return toolUse.input as ExplanationFields;
+    const toolUse = message.content.find((block) => block.type === "tool_use");
+    if (!toolUse || toolUse.type !== "tool_use") {
+      throw new Error("Claude no devolvió una explicación estructurada");
+    }
+    return toolUse.input as ExplanationFields;
+  });
 }
 
 export async function askFollowUp(
@@ -152,36 +176,40 @@ export interface ParsedIntent {
 }
 
 export async function parseQueryIntent(text: string): Promise<ParsedIntent> {
-  const message = await getClient().messages.create({
-    model: INTENT_MODEL,
-    max_tokens: 300,
-    system: INTENT_SYSTEM_PROMPT,
-    tools: [INTENT_TOOL],
-    tool_choice: { type: "tool", name: INTENT_TOOL.name },
-    messages: [{ role: "user", content: text }],
+  // La intención de un texto dado no cambia con el tiempo, así que se cachea
+  // largo: repetir la misma búsqueda no vuelve a costar.
+  return getOrSet(cacheKey("intent", text.trim().toLowerCase()), THIRTY_DAYS_MS, async () => {
+    const message = await getClient().messages.create({
+      model: INTENT_MODEL,
+      max_tokens: 300,
+      system: INTENT_SYSTEM_PROMPT,
+      tools: [INTENT_TOOL],
+      tool_choice: { type: "tool", name: INTENT_TOOL.name },
+      messages: [{ role: "user", content: text }],
+    });
+
+    const toolUse = message.content.find((block) => block.type === "tool_use");
+    if (!toolUse || toolUse.type !== "tool_use") {
+      throw new Error("Claude no pudo interpretar la petición");
+    }
+    const input = toolUse.input as {
+      sport: Sport;
+      locality_text: string;
+      require_dogs_allowed?: boolean;
+      require_naturist?: boolean;
+      exclude_naturist?: boolean;
+    };
+
+    return {
+      sport: input.sport,
+      localityText: input.locality_text,
+      filters: {
+        requireDogsAllowed: input.require_dogs_allowed,
+        requireNaturist: input.require_naturist,
+        excludeNaturist: input.exclude_naturist,
+      },
+    };
   });
-
-  const toolUse = message.content.find((block) => block.type === "tool_use");
-  if (!toolUse || toolUse.type !== "tool_use") {
-    throw new Error("Claude no pudo interpretar la petición");
-  }
-  const input = toolUse.input as {
-    sport: Sport;
-    locality_text: string;
-    require_dogs_allowed?: boolean;
-    require_naturist?: boolean;
-    exclude_naturist?: boolean;
-  };
-
-  return {
-    sport: input.sport,
-    localityText: input.locality_text,
-    filters: {
-      requireDogsAllowed: input.require_dogs_allowed,
-      requireNaturist: input.require_naturist,
-      excludeNaturist: input.exclude_naturist,
-    },
-  };
 }
 
 export interface RankingCandidate {
@@ -236,20 +264,24 @@ export async function rankSpots(
   sport: Sport,
   candidates: RankingCandidate[],
 ): Promise<RankingResult[]> {
-  const message = await getClient().messages.create({
-    model: MODEL,
-    max_tokens: 1500,
-    system: RANK_SYSTEM_PROMPT,
-    tools: [RANK_TOOL],
-    tool_choice: { type: "tool", name: RANK_TOOL.name },
-    messages: [{ role: "user", content: JSON.stringify({ request: originalText, sport, candidates }) }],
+  const payload = { request: originalText, sport, candidates };
+
+  return getOrSet(cacheKey("rank", payload), AI_CACHE_TTL_MS, async () => {
+    const message = await getClient().messages.create({
+      model: MODEL,
+      max_tokens: 1500,
+      system: RANK_SYSTEM_PROMPT,
+      tools: [RANK_TOOL],
+      tool_choice: { type: "tool", name: RANK_TOOL.name },
+      messages: [{ role: "user", content: JSON.stringify(payload) }],
+    });
+
+    const toolUse = message.content.find((block) => block.type === "tool_use");
+    if (!toolUse || toolUse.type !== "tool_use") {
+      throw new Error("Claude no devolvió un ranking estructurado");
+    }
+    const { rankings } = toolUse.input as { rankings: { spot_id: string; headline: string; reasoning: string }[] };
+
+    return rankings.map((r) => ({ spotId: r.spot_id, headline: r.headline, reasoning: r.reasoning }));
   });
-
-  const toolUse = message.content.find((block) => block.type === "tool_use");
-  if (!toolUse || toolUse.type !== "tool_use") {
-    throw new Error("Claude no devolvió un ranking estructurado");
-  }
-  const { rankings } = toolUse.input as { rankings: { spot_id: string; headline: string; reasoning: string }[] };
-
-  return rankings.map((r) => ({ spotId: r.spot_id, headline: r.headline, reasoning: r.reasoning }));
 }

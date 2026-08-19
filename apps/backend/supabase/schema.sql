@@ -5,6 +5,21 @@
 -- "sport_favorites" (spot_id + sport). "push_tokens" no existía, sin cambios.
 -- Ambas tablas son nuevas — este script no modifica ni borra nada existente.
 
+-- Caché persistente de todo lo caro y lento: geocodificación (Nominatim/Photon),
+-- zonas de Overpass y explicaciones de la IA. Es lo que hace que las zonas estén
+-- "precalculadas": el plan gratuito de Render duerme el servicio a los ~15 min,
+-- y con caché solo en memoria cada despertar volvía a pegarle a las APIs públicas
+-- desde cero (de ahí los 429/406) y a pagar de nuevo cada llamada a Claude.
+-- Sin RLS a propósito: solo la toca el backend con la service role key.
+create table if not exists public.api_cache (
+  key text primary key,
+  value jsonb not null,
+  expires_at timestamptz not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists api_cache_expires_at_idx on public.api_cache (expires_at);
+
 create table if not exists public.sport_favorites (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,

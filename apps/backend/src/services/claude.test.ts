@@ -6,6 +6,7 @@ vi.mock("@anthropic-ai/sdk", () => ({
   default: vi.fn().mockImplementation(() => ({ messages: { create: mockCreate } })),
 }));
 
+import { __clearMemoryCache } from "../lib/cache.js";
 import { askFollowUp, explainSpot, parseQueryIntent, rankSpots } from "./claude.js";
 
 const PAYLOAD = {
@@ -26,6 +27,8 @@ const PAYLOAD = {
 describe("explainSpot", () => {
   beforeEach(() => {
     mockCreate.mockReset();
+    // La IA se cachea por payload: sin esto un test reutiliza la respuesta del anterior.
+    __clearMemoryCache();
   });
 
   it("devuelve los campos del tool_use de Claude", async () => {
@@ -64,6 +67,8 @@ describe("explainSpot", () => {
 describe("askFollowUp", () => {
   beforeEach(() => {
     mockCreate.mockReset();
+    // La IA se cachea por payload: sin esto un test reutiliza la respuesta del anterior.
+    __clearMemoryCache();
   });
 
   it("incluye el grounding payload y el historial en la llamada", async () => {
@@ -89,6 +94,8 @@ describe("askFollowUp", () => {
 describe("parseQueryIntent", () => {
   beforeEach(() => {
     mockCreate.mockReset();
+    // La IA se cachea por payload: sin esto un test reutiliza la respuesta del anterior.
+    __clearMemoryCache();
   });
 
   it("mapea los campos snake_case del tool_use a la forma camelCase", async () => {
@@ -125,6 +132,8 @@ describe("parseQueryIntent", () => {
 describe("rankSpots", () => {
   beforeEach(() => {
     mockCreate.mockReset();
+    // La IA se cachea por payload: sin esto un test reutiliza la respuesta del anterior.
+    __clearMemoryCache();
   });
 
   it("mapea spot_id a spotId en cada entrada del ranking", async () => {
@@ -158,5 +167,46 @@ describe("rankSpots", () => {
     mockCreate.mockResolvedValue({ content: [{ type: "text", text: "no debería pasar" }] });
 
     await expect(rankSpots("texto", "running", [])).rejects.toThrow("Claude no devolvió un ranking estructurado");
+  });
+});
+
+describe("caché de respuestas de la IA", () => {
+  beforeEach(() => {
+    mockCreate.mockReset();
+    __clearMemoryCache();
+  });
+
+  it("no vuelve a llamar a Claude si el payload es idéntico (abrir el mismo pin dos veces)", async () => {
+    mockCreate.mockResolvedValue({
+      content: [{ type: "tool_use", input: { headline: "h", reasoning: "r", cautions: [] } }],
+    });
+
+    await explainSpot(PAYLOAD);
+    await explainSpot(PAYLOAD);
+    await explainSpot(PAYLOAD);
+
+    // Sin caché esto eran tres llamadas a Opus facturadas.
+    expect(mockCreate).toHaveBeenCalledTimes(1);
+  });
+
+  it("sí vuelve a llamar cuando cambian los datos (otro score, otra meteo)", async () => {
+    mockCreate.mockResolvedValue({
+      content: [{ type: "tool_use", input: { headline: "h", reasoning: "r", cautions: [] } }],
+    });
+
+    await explainSpot(PAYLOAD);
+    await explainSpot({ ...PAYLOAD, score: 40, scoreBand: "amber" as const });
+
+    expect(mockCreate).toHaveBeenCalledTimes(2);
+  });
+
+  it("no cachea los errores: un fallo transitorio no queda servido durante horas", async () => {
+    mockCreate.mockResolvedValueOnce({ content: [{ type: "text", text: "sin tool_use" }] });
+    await expect(explainSpot(PAYLOAD)).rejects.toThrow();
+
+    mockCreate.mockResolvedValueOnce({
+      content: [{ type: "tool_use", input: { headline: "ok", reasoning: "r", cautions: [] } }],
+    });
+    await expect(explainSpot(PAYLOAD)).resolves.toMatchObject({ headline: "ok" });
   });
 });
