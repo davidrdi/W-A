@@ -38,9 +38,9 @@ interface OverpassResponse {
 // todas "natural=beach" — lo que cambia entre ellos es el SCORING, no el
 // sitio). Así se cachea una sola vez por categoría en vez de una vez por
 // deporte.
-type SpotCategory = "urbanPath" | "trail" | "cycleway" | "beach";
+export type SpotCategory = "urbanPath" | "trail" | "cycleway" | "beach";
 
-const SPORT_CATEGORY: Record<Sport, SpotCategory> = {
+export const SPORT_CATEGORY: Record<Sport, SpotCategory> = {
   running: "urbanPath",
   paseo: "urbanPath",
   senderismo: "trail",
@@ -173,8 +173,18 @@ async function fetchCategoryElements(category: SpotCategory, areaId: number): Pr
   });
 }
 
-export async function findSpots(sport: Sport, areaId: number, limit = 8): Promise<Spot[]> {
-  const category = SPORT_CATEGORY[sport];
+/**
+ * Consulta Overpass en vivo por categoría (sin etiquetar el `sport`, que es
+ * quien la pide, no una propiedad de la zona en sí). Es el motor que usa
+ * `findSpots()` para localidades concretas, y también el que usa el job de
+ * refresco (services/spotsRefresh.ts) para poblar la tabla `spots` a escala
+ * nacional — ahí no hay ninguna petición de usuario esperando la respuesta.
+ */
+export async function findSpotsRawByCategory(
+  category: SpotCategory,
+  areaId: number,
+  limit: number,
+): Promise<Omit<Spot, "sport">[]> {
   const elements = await fetchCategoryElements(category, areaId);
 
   const withCoords = elements.filter((el) => el.center || (el.lat !== undefined && el.lon !== undefined));
@@ -189,8 +199,19 @@ export async function findSpots(sport: Sport, areaId: number, limit = 8): Promis
       name: el.tags?.name ?? fallbackName(el, category),
       lat,
       lon,
-      sport,
       amenities: parseAmenities(el.tags),
     };
   });
+}
+
+/**
+ * Vía en vivo para una localidad concreta. Con la tabla `spots` precalculada
+ * (ver services/zones.ts) esto ya no es el camino habitual: solo se llama
+ * cuando una localidad no tiene cobertura en la tabla (pueblo pequeño fuera
+ * del conjunto curado, o refresco aún no ejecutado).
+ */
+export async function findSpots(sport: Sport, areaId: number, limit = 8): Promise<Spot[]> {
+  const category = SPORT_CATEGORY[sport];
+  const raw = await findSpotsRawByCategory(category, areaId, limit);
+  return raw.map((spot) => ({ ...spot, sport }));
 }

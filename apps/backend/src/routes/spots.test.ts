@@ -4,9 +4,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../services/geocoding.js", () => ({
   resolveLocality: vi.fn(),
 }));
-vi.mock("../services/spots.js", () => ({
-  findSpots: vi.fn(),
-}));
+vi.mock("../services/spots.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../services/spots.js")>();
+  return { ...actual, findSpots: vi.fn() };
+});
+// resolveZones (usada por /spots vía zones.ts) intenta primero la tabla
+// precalculada — vacía por defecto aquí, para que estos tests sigan
+// probando la vía en vivo de findSpots sin necesitar Supabase.
+vi.mock("../services/spotsRepo.js", () => ({ getSpotsNear: vi.fn().mockResolvedValue([]) }));
 vi.mock("../services/weather.js", () => ({
   getWeatherSnapshots: vi.fn(),
 }));

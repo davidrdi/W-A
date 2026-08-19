@@ -1,41 +1,32 @@
 import type { FastifyInstance } from "fastify";
-import type { OverviewResponse, OverviewSpot } from "@w-a/shared";
+import type { OverviewResponse, OverviewSpot, Sport } from "@w-a/shared";
 import { z } from "zod";
 
 import { allSeedZones } from "../data/seedZones.js";
 import { resolveLocality } from "../services/geocoding.js";
 import { SPORT_VALUES, isWaterSport } from "../lib/sport.js";
 import { getMarineSnapshots } from "../services/marine.js";
-import { findSpots } from "../services/spots.js";
+import { findSpots, SPORT_CATEGORY } from "../services/spots.js";
+import { getSpotsByCategory } from "../services/spotsRepo.js";
+import { NATIONWIDE_BEACH_LIMIT } from "../services/spotsRefresh.js";
 import { getWeatherSnapshots } from "../services/weather.js";
 import { scoreBandFor, scoreLandSport, scoreWaterSport } from "../scoring/rules.js";
 
 const querySchema = z.object({ sport: z.enum(SPORT_VALUES) });
 
-// "Todas las playas" pedido de verdad: con este tope, el único caso en que se
-// recortaría es que España tenga más elementos natural=beach en OSM que esto
-// — muy por encima de lo real (del orden de unos pocos miles) — así que en la
-// práctica equivale a sin límite, sin dejar de tener un techo defendible.
-const NATIONWIDE_BEACH_LIMIT = 8000;
-
 /**
  * Vista general por deporte, sin buscar localidad ni hacer zoom.
  *
- * Playa/surf/windsurf: TODAS las playas de España, en vivo desde OSM
- * (natural=beach es un tag concreto y acotado — factible a escala nacional).
- * Se resuelve el área de España una vez (cacheada) y se reutiliza
- * literalmente findSpots(), el mismo camino que ya usa la búsqueda por
- * localidad, solo que con el área de todo el país y sin techo real.
+ * Vía normal (para cualquier deporte): la tabla `spots` precalculada
+ * (services/spotsRepo.ts), sincronizada por un job aparte
+ * (services/spotsRefresh.ts) que nunca dispara tráfico de usuario — ni
+ * Overpass ni Nominatim entran en el camino de esta petición.
  *
- * Running/paseo/senderismo/bici: zonas representativas precalculadas
- * (data/seedZones.ts), no exhaustivas — el tag equivalente en Overpass
- * (sendas y caminos peatonales de TODA España) es demasiado amplio para
- * pedirlo en vivo sin arriesgar el servicio (podría timeout / payload enorme
- * / tumbar la instancia pública que lo atienda).
- *
- * Si la vía en vivo de playas falla (Overpass caído, geocodificar "España"
- * falla...), se cae al mismo conjunto precalculado que usan los deportes de
- * tierra, para no dejar la vista general vacía.
+ * Si la tabla está vacía (recién desplegado, el job aún no ha corrido nunca,
+ * o Supabase no responde) se cae, por este orden:
+ * 1. Playa/surf/windsurf: TODAS las playas de España en vivo desde OSM
+ *    (mismo camino que usaba el job antes de que existiera la tabla).
+ * 2. Cualquier deporte: zonas de arranque del repo (data/seedZones.ts).
  */
 export async function registerOverviewRoute(app: FastifyInstance) {
   app.get("/overview", async (request, reply) => {
@@ -45,9 +36,16 @@ export async function registerOverviewRoute(app: FastifyInstance) {
     }
     const { sport } = parsed.data;
 
+    try {
+      const fromTable = await overviewFromTable(sport);
+      if (fromTable.spots.length > 0) return fromTable;
+    } catch (error) {
+      request.log.warn({ err: error }, "vista general: no se pudo leer la tabla de zonas precalculadas");
+    }
+
     if (isWaterSport(sport)) {
       try {
-        return await nationwideBeaches(sport);
+        return await nationwideBeachesLive(sport);
       } catch (error) {
         request.log.warn({ err: error }, "vista general de playas en vivo falló, usando zonas precalculadas");
       }
@@ -57,7 +55,40 @@ export async function registerOverviewRoute(app: FastifyInstance) {
   });
 }
 
-async function nationwideBeaches(sport: OverviewResponse["sport"]): Promise<OverviewResponse> {
+async function overviewFromTable(sport: Sport): Promise<OverviewResponse> {
+  const category = SPORT_CATEGORY[sport];
+  const rows = await getSpotsByCategory(category);
+  if (rows.length === 0) return { sport, spots: [] };
+
+  const coords = rows.map((r) => ({ lat: r.lat, lon: r.lon }));
+  const water = isWaterSport(sport);
+  const [weatherSnapshots, marineSnapshots] = await Promise.all([
+    getWeatherSnapshots(coords),
+    water ? getMarineSnapshots(coords) : Promise.resolve(null),
+  ]);
+
+  const spots: OverviewSpot[] = rows.map((row, i) => {
+    const score = water
+      ? scoreWaterSport(sport, weatherSnapshots[i], marineSnapshots![i])
+      : scoreLandSport(sport, weatherSnapshots[i]);
+    return {
+      id: row.id,
+      name: row.name,
+      lat: row.lat,
+      lon: row.lon,
+      sport,
+      score,
+      scoreBand: scoreBandFor(score),
+      amenities: row.amenities,
+      windDirectionDeg: weatherSnapshots[i].windDirectionMiddayDeg,
+      windAvgKmh: weatherSnapshots[i].windAvgTodayKmh,
+    };
+  });
+
+  return { sport, spots };
+}
+
+async function nationwideBeachesLive(sport: OverviewResponse["sport"]): Promise<OverviewResponse> {
   const spain = await resolveLocality("España");
   const beaches = await findSpots(sport, spain.areaId, NATIONWIDE_BEACH_LIMIT);
   if (beaches.length === 0) throw new Error("Overpass no devolvió ninguna playa para España");

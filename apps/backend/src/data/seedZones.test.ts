@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { allSeedZones, findSeedLocality, seedSpotsFor } from "./seedZones.js";
+import { allSeedSpotsByCategory, allSeedZones, findSeedLocality, seedSpotsFor } from "./seedZones.js";
 
 describe("findSeedLocality", () => {
   it("encuentra A Coruña sin tildes", () => {
@@ -70,5 +70,31 @@ describe("allSeedZones", () => {
     const cyclewayZones = allSeedZones("bici").map((z) => z.name);
 
     expect(beachZones.some((name) => cyclewayZones.includes(name))).toBe(false);
+  });
+});
+
+describe("allSeedSpotsByCategory", () => {
+  it("junta todas las zonas de una categoría, de todas las localidades, sin filtrar por deporte", () => {
+    const spots = allSeedSpotsByCategory("beach");
+
+    expect(spots.length).toBeGreaterThan(10);
+    expect(spots.map((s) => s.name)).toContain("Playa de Riazor");
+    expect(spots.every((s) => s.id.startsWith("seed/"))).toBe(true);
+  });
+
+  it("una zona con varias categorías (p.ej. parque + carril bici) sale una vez por cada categoría pedida", () => {
+    const urbanPath = allSeedSpotsByCategory("urbanPath").map((s) => s.name);
+    const cycleway = allSeedSpotsByCategory("cycleway").map((s) => s.name);
+
+    expect(urbanPath).toContain("Parque de Santa Margarita");
+    expect(cycleway).toContain("Parque de Santa Margarita");
+  });
+
+  it("no incluye ninguna propiedad de deporte (id/nombre/coordenadas solamente)", () => {
+    const spots = allSeedSpotsByCategory("trail");
+
+    for (const spot of spots) {
+      expect(Object.keys(spot).sort()).toEqual(["id", "lat", "lon", "name"]);
+    }
   });
 });

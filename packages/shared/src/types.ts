@@ -88,17 +88,21 @@ export interface ScoredSpot extends Spot {
 }
 
 /**
- * De dónde salen las zonas: "osm" son datos en vivo de Overpass (lo normal),
- * "seed" son las zonas precalculadas del repo, que entran cuando las APIs
- * públicas de OSM fallan. Se expone para que la UI pueda avisarlo en vez de
- * presentar unas y otras como si fueran lo mismo.
+ * De dónde salen las zonas: "db" es la tabla `spots` precalculada (lo
+ * normal: un job en segundo plano la mantiene al día, ver
+ * services/spotsRefresh.ts — ninguna petición de usuario dispara una
+ * consulta a Overpass), "osm" son datos en vivo de Overpass (solo cuando la
+ * localidad no tiene cobertura precalculada) y "seed" son las zonas
+ * precalculadas del repo, que entran cuando fallan tanto la tabla como las
+ * APIs públicas de OSM. Se expone para que la UI pueda avisarlo en vez de
+ * presentar las tres como si fueran lo mismo.
  */
-export type ZonesSource = "osm" | "seed";
+export type ZonesSource = "db" | "osm" | "seed";
 
 export interface OverviewSpot extends ScoredSpot {
   /**
-   * Ausente en las playas: salen en vivo de Overpass a escala de todo el
-   * país, sin una consulta de localidad de por medio que la dé.
+   * Ausente en las playas: salen de la tabla precalculada a escala de todo
+   * el país, sin una consulta de localidad de por medio que la dé.
    */
   locality?: string;
 }
@@ -107,12 +111,13 @@ export interface OverviewSpot extends ScoredSpot {
  * Vista general por deporte, sin localidad: un pin por zona, coloreado por
  * score, sin tener que buscar ni hacer zoom.
  *
- * Playa/surf/windsurf: TODAS las playas de España, en vivo desde OSM — es un
- * tag concreto y acotado (natural=beach), factible a escala nacional.
- * Running/paseo/senderismo/bici: zonas representativas precalculadas
- * (data/seedZones.ts), no exhaustivas — la consulta equivalente en Overpass
- * (sendas y caminos peatonales de TODA España) es demasiado amplia para
- * pedirla en vivo sin arriesgar el servicio.
+ * Playa/surf/windsurf: TODAS las playas de España, desde la tabla `spots`
+ * precalculada (un job en segundo plano la sincroniza con OSM — natural=beach
+ * es un tag concreto y acotado, factible a escala nacional). Running/paseo/
+ * senderismo/bici: zonas representativas precalculadas (data/seedZones.ts,
+ * cargadas en la misma tabla), no exhaustivas — la consulta equivalente en
+ * Overpass (sendas y caminos peatonales de TODA España) es demasiado amplia
+ * para pedirla en vivo sin arriesgar el servicio.
  */
 export interface OverviewResponse {
   sport: Sport;

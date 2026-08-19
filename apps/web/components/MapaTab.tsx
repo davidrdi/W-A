@@ -27,7 +27,7 @@ type ViewState =
   | { kind: "overview"; status: "done" }
   | { kind: "search"; status: "loading" }
   | { kind: "search"; status: "error"; message: string }
-  | { kind: "search"; status: "done"; locality: string; source: "osm" | "seed" };
+  | { kind: "search"; status: "done"; locality: string; source: "db" | "osm" | "seed" };
 
 // Nominatim devuelve el nombre completo ("A Coruña, Galicia, España, 15001"),
 // demasiado largo para una línea de resumen.

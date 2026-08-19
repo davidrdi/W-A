@@ -1,11 +1,8 @@
 import Fastify from "fastify";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../services/geocoding.js", () => ({
-  resolveLocality: vi.fn(),
-}));
-vi.mock("../services/spots.js", () => ({
-  findSpots: vi.fn(),
+vi.mock("../services/zones.js", () => ({
+  resolveZones: vi.fn(),
 }));
 vi.mock("../services/weather.js", () => ({
   getWeatherSnapshots: vi.fn(),
@@ -14,10 +11,9 @@ vi.mock("../services/marine.js", () => ({
   getMarineSnapshots: vi.fn(),
 }));
 
-import { resolveLocality } from "../services/geocoding.js";
 import { getMarineSnapshots } from "../services/marine.js";
-import { findSpots } from "../services/spots.js";
 import { getWeatherSnapshots } from "../services/weather.js";
+import { resolveZones } from "../services/zones.js";
 import { registerRecommendRoute } from "./recommend.js";
 
 const weatherFixture = {
@@ -35,17 +31,13 @@ describe("GET /recommend", () => {
     vi.clearAllMocks();
   });
 
-  it("solo devuelve spots dentro del área resuelta por geocoding (no cuela municipios vecinos)", async () => {
-    vi.mocked(resolveLocality).mockResolvedValue({
-      query: "A Coruña",
-      displayName: "A Coruña, Galicia, España",
-      areaId: 3_600_349_055,
-      lat: 43.36,
-      lon: -8.41,
+  it("usa las zonas resueltas (tabla precalculada, en vivo o de arranque) igual que /spots y /query", async () => {
+    vi.mocked(resolveZones).mockResolvedValue({
+      locality: "A Coruña, Galicia, España",
+      localityCenter: { lat: 43.36, lon: -8.41 },
+      spots: [{ id: "way/1", name: "Parque de Santa Margarita", lat: 43.37, lon: -8.4, sport: "running" }],
+      source: "db",
     });
-    vi.mocked(findSpots).mockResolvedValue([
-      { id: "way/1", name: "Parque de Santa Margarita", lat: 43.37, lon: -8.4, sport: "running" },
-    ]);
     vi.mocked(getWeatherSnapshots).mockResolvedValue([weatherFixture]);
 
     const app = Fastify();
@@ -61,22 +53,17 @@ describe("GET /recommend", () => {
     expect(body.spots[0].weather).toEqual(weatherFixture);
     expect(body.spots[0].marine).toBeUndefined();
 
-    // El área pasada a Overpass es la resuelta por geocoding, no un radio libre.
-    expect(findSpots).toHaveBeenCalledWith("running", 3_600_349_055);
+    expect(resolveZones).toHaveBeenCalledWith("running", "A Coruña", 8);
     expect(getMarineSnapshots).not.toHaveBeenCalled();
   });
 
   it("para un deporte de agua incluye también el desglose marino por spot", async () => {
-    vi.mocked(resolveLocality).mockResolvedValue({
-      query: "Vigo",
-      displayName: "Vigo, Galicia, España",
-      areaId: 3_600_000_500,
-      lat: 42.23,
-      lon: -8.72,
+    vi.mocked(resolveZones).mockResolvedValue({
+      locality: "Vigo, Galicia, España",
+      localityCenter: { lat: 42.23, lon: -8.72 },
+      spots: [{ id: "way/5", name: "Praia de Samil", lat: 42.21, lon: -8.77, sport: "windsurf" }],
+      source: "db",
     });
-    vi.mocked(findSpots).mockResolvedValue([
-      { id: "way/5", name: "Praia de Samil", lat: 42.21, lon: -8.77, sport: "windsurf" },
-    ]);
     vi.mocked(getWeatherSnapshots).mockResolvedValue([weatherFixture]);
     vi.mocked(getMarineSnapshots).mockResolvedValue([
       { waveHeightAvgM: 0.6, waveHeightMaxM: 0.9, seaSurfaceTempC: 17 },
@@ -92,14 +79,12 @@ describe("GET /recommend", () => {
   });
 
   it("devuelve una lista vacía sin llamar a meteo si no hay spots en el área", async () => {
-    vi.mocked(resolveLocality).mockResolvedValue({
-      query: "Localidad sin spots",
-      displayName: "Localidad sin spots",
-      areaId: 3_600_000_999,
-      lat: 0,
-      lon: 0,
+    vi.mocked(resolveZones).mockResolvedValue({
+      locality: "Localidad sin spots",
+      localityCenter: { lat: 0, lon: 0 },
+      spots: [],
+      source: "osm",
     });
-    vi.mocked(findSpots).mockResolvedValue([]);
 
     const app = Fastify();
     await registerRecommendRoute(app);

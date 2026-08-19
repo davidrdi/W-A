@@ -137,13 +137,14 @@ después de dormido tarda ~30s en responder mientras arranca.
 
 ### Caché persistente (tabla `api_cache` en Supabase)
 
-Todo lo caro y lento se cachea en Supabase, no solo en memoria: geocodificación
-(Nominatim/Photon), zonas de Overpass y respuestas de la IA. **Esto no es una optimización,
-es lo que hace que la app funcione**: como Render duerme el servicio cada 15 min, con caché
-solo en memoria cada despertar volvía a pegarle desde cero a las APIs públicas de OSM —que
-limitan por IP, y en Render la IP de salida es compartida— y devolvía 429/406. La geografía
-no cambia, así que se resuelve una vez y queda guardada (TTL: 30 días localidades, 7 días
-zonas, 3 h explicaciones de IA).
+Lo caro y lento que sigue siendo genuinamente dinámico (geocodificación puntual de una
+localidad nueva, respuestas de la IA) se cachea en Supabase, no solo en memoria. **Esto no es
+una optimización, es lo que hace que la app funcione**: como Render duerme el servicio cada 15
+min, con caché solo en memoria cada despertar volvía a pegarle desde cero a las APIs
+públicas —que limitan por IP, y en Render la IP de salida es compartida— y devolvía 429/406. Lo
+que no cambia con cada petición se resuelve una vez y queda guardado (TTL: 30 días
+localidades, 3 h explicaciones de IA). Las **zonas** (playas y zonas de deporte) ya no viven
+aquí — tienen su propia tabla, ver "Zonas precalculadas" más abajo.
 
 Presupuesto de IA: las llamadas a Claude se cachean por el contenido exacto de la petición,
 así que abrir diez veces el mismo pin cuesta una sola llamada, y repetir una búsqueda no
@@ -156,9 +157,49 @@ uniendo las coordenadas de la petición — con la vista general de "todas las p
 (miles de coordenadas) eso revienta el límite. `lib/cache.ts#hashKey` las deja siempre cortas
 (hash de 32 caracteres) pase lo que pase de larga la lista de partes.
 
-**Troceado de peticiones a Open-Meteo**: por el mismo motivo (miles de coordenadas), una sola
-URL con todas ellas supera límites prácticos de longitud. `weather.ts`/`marine.ts` trocean en
-lotes de 100 y piden (y cachean) cada lote por separado.
+**Troceado y concurrencia acotada en Open-Meteo**: por el mismo motivo (miles de coordenadas),
+una sola URL con todas ellas supera límites prácticos de longitud. `weather.ts`/`marine.ts`
+trocean en lotes de 100 y piden (y cachean) cada lote por separado — pero lanzar todos los
+lotes a la vez con `Promise.all` seguía siendo una ráfaga de 15-20 peticiones simultáneas
+(justo lo que se dispara al pedir el tiempo de todas las playas de España de golpe) y Open-Meteo
+respondía 429. `lib/concurrency.ts#mapWithConcurrency` limita a 4 lotes en vuelo a la vez.
+
+### Zonas precalculadas (tabla `spots` en Supabase)
+
+Las zonas (playas y zonas de deporte de tierra) tienen su propia tabla, sincronizada por un job
+en segundo plano — **ninguna petición de usuario dispara una consulta a Overpass**. Antes se
+pedían en vivo en cada búsqueda (cacheadas 7 días en `api_cache`, pero el primer usuario tras
+cada vencimiento pagaba la consulta completa, incluida "todas las playas de España" de golpe:
+la causa original de los 429 de Open-Meteo de más arriba). El tiempo sí se sigue pidiendo en
+cada petición (`api_cache`, TTL 1h) — es lo único que cambia día a día; la zona en sí no.
+
+- **`POST /internal/refresh-spots`** (mismo patrón que `/internal/notify-favorites`: cabecera
+  `x-internal-secret`, sin `requireAuth`) ejecuta `services/spotsRefresh.ts`:
+  - **Playas**: consulta Overpass en vivo para toda España (`natural=beach`, acotado y factible
+    a escala nacional) y reemplaza la categoría `beach` entera en la tabla.
+  - **Running/paseo/senderismo/bici**: sincroniza desde el conjunto curado de
+    `data/seedZones.ts` — no de Overpass en vivo a escala nacional (la consulta equivalente,
+    sendas y caminos peatonales de toda España, es demasiado amplia para pedirla sin arriesgar
+    el servicio; sigue siendo una cobertura representativa, no exhaustiva, decisión explícita
+    desde el principio).
+- No hay scheduler propio corriendo dentro de este backend, igual que con las notificaciones de
+  favoritos — hay que llamar a ese endpoint desde algo externo. Como las zonas cambian mucho
+  menos que el tiempo, con una vez al día (o incluso a la semana) sobra; reutiliza el mismo
+  `INTERNAL_JOB_SECRET` que ya tengas configurado.
+- **`GET /spots`, `GET /recommend`, `POST /query`** (búsqueda por localidad) leen primero de
+  esta tabla (`services/zones.ts#resolveZones`, radio de 25 km alrededor del centro de la
+  localidad resuelta — sin PostGIS aquí, se acota por bounding box y la distancia exacta se
+  calcula en la aplicación). Solo si la tabla no tiene nada para esa localidad concreta
+  (pueblo pequeño fuera del conjunto curado de zonas de tierra, o el job aún no ha corrido)
+  cae a Overpass en vivo, y si eso también falla, a `data/seedZones.ts`. El campo `source` de
+  la respuesta (`"db" | "osm" | "seed"`) dice cuál de los tres se usó.
+- **`GET /overview`** (vista nacional sin buscar) lee toda la tabla para la categoría pedida,
+  sin filtrar por localidad; mismo orden de caídas (tabla → en vivo solo para playas → zonas de
+  arranque) si está vacía.
+- Requiere la tabla `spots` de `apps/backend/supabase/schema.sql` — vuelve a pegar el archivo
+  completo en el SQL Editor si ya creaste el proyecto antes de esta versión. Hasta la primera
+  vez que corra `/internal/refresh-spots`, la tabla está vacía y todo funciona igual que antes
+  (en vivo / zonas de arranque) — no hace falta poblarla a mano para desplegar.
 
 ## Diseño de mapa
 

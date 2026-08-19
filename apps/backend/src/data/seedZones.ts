@@ -37,7 +37,7 @@ interface SeedZone {
 
 // Mismas categorías que services/spots.ts: lo que cambia entre running y paseo
 // (o entre playa, surf y windsurf) es el scoring, no el sitio.
-type SeedCategory = "urbanPath" | "trail" | "cycleway" | "beach";
+export type SeedCategory = "urbanPath" | "trail" | "cycleway" | "beach";
 
 const SPORT_CATEGORY: Record<Sport, SeedCategory> = {
   running: "urbanPath",
@@ -572,6 +572,27 @@ export function allSeedZones(sport: Sport): OverviewZone[] {
       .filter((zone) => zone.categories.includes(category))
       .map((zone) => ({
         locality: locality.displayName,
+        id: `seed/${normalize(zone.name).replace(/\s+/g, "-")}`,
+        name: zone.name,
+        lat: zone.lat,
+        lon: zone.lon,
+      })),
+  );
+}
+
+/**
+ * Todas las zonas de una categoría (de todas las localidades precalculadas),
+ * sin filtrar por deporte ni localidad: es lo que consume el job de refresco
+ * (services/spotsRefresh.ts) para cargar la tabla `spots` con las zonas de
+ * deporte de tierra. Un mismo id puede salir en más de una llamada (una vez
+ * por cada categoría a la que pertenezca su zona) — coincide a propósito con
+ * la clave compuesta (id, category) de la tabla.
+ */
+export function allSeedSpotsByCategory(category: SeedCategory): Omit<Spot, "sport">[] {
+  return LOCALITIES.flatMap((locality) =>
+    locality.zones
+      .filter((zone) => zone.categories.includes(category))
+      .map((zone) => ({
         id: `seed/${normalize(zone.name).replace(/\s+/g, "-")}`,
         name: zone.name,
         lat: zone.lat,
