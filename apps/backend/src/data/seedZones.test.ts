@@ -42,6 +42,19 @@ describe("allSeedZones", () => {
     expect(zones.every((z) => z.id.startsWith("seed/"))).toBe(true);
   });
 
+  it("cubre la costa gallega de Lugo a Pontevedra, no solo A Coruña y Vigo", () => {
+    const localities = new Set(allSeedZones("playa").map((z) => z.locality));
+
+    // Lugo: antes no había ninguna zona al norte de A Coruña.
+    expect([...localities].some((l) => l.includes("Ribadeo") || l.includes("Foz") || l.includes("Viveiro"))).toBe(
+      true,
+    );
+    // Rías Baixas: la zona que el usuario probó (Muros/Noia/Boiro/Rianxo/Vilagarcía) y no tenía cobertura.
+    expect(
+      [...localities].some((l) => l.includes("Muros") || l.includes("Noia") || l.includes("Vilagarcía")),
+    ).toBe(true);
+  });
+
   it("no devuelve zonas de deportes que no encajan (bici en una playa)", () => {
     const beachZones = allSeedZones("playa").map((z) => z.name);
     const cyclewayZones = allSeedZones("bici").map((z) => z.name);

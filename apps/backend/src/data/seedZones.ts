@@ -18,6 +18,13 @@ import type { Spot, Sport } from "@w-a/shared";
  * meteo de la zona, que se calcula sobre una celda de varios km). No salen de
  * una descarga de OSM, así que no tienen osm_id: sus ids llevan el prefijo
  * "seed/" precisamente para que nunca se confundan con los de OSM.
+ *
+ * AVISO sobre las coordenadas: están puestas a mano por conocimiento general
+ * de cada sitio, no verificadas contra un mapa. Para las capitales grandes
+ * (Madrid, Barcelona...) el margen de error es mínimo; para pueblos costeros
+ * pequeños (la ampliación de la costa gallega) puede haber más desviación —
+ * sigue siendo suficiente para centrar el mapa y pedir meteo de la zona, pero
+ * no lo tomes como una posición exacta de la playa.
  */
 
 interface SeedZone {
@@ -77,6 +84,136 @@ const LOCALITIES: SeedLocality[] = [
       { name: "Playa de Samil", lat: 42.2058, lon: -8.7684, categories: ["beach"] },
       { name: "Parque do Monte da Guía", lat: 42.2495, lon: -8.6899, categories: ["trail"] },
     ],
+  },
+  // Resto de la costa gallega: cobertura de Lugo (Ribadeo→Cedeira) y de las
+  // Rías Baixas (Muros→A Guarda), para que la vista general del mapa no deje
+  // huecos grandes en la costa. Cada localidad lleva su playa principal y,
+  // cuando el pueblo tiene paseo marítimo conocido, una zona de paseo/running
+  // en el mismo punto (misma coordenada: el paseo corre junto a la playa).
+  {
+    displayName: "Ribadeo, Lugo, Galicia, España",
+    lat: 43.5401,
+    lon: -7.0402,
+    aliases: ["ribadeo"],
+    zones: [{ name: "Playa de As Catedrais", lat: 43.5589, lon: -7.1653, categories: ["beach"] }],
+  },
+  {
+    displayName: "Foz, Lugo, Galicia, España",
+    lat: 43.5701,
+    lon: -7.2542,
+    aliases: ["foz"],
+    zones: [{ name: "Playa de A Rapadoira", lat: 43.5731, lon: -7.2536, categories: ["beach"] }],
+  },
+  {
+    displayName: "Viveiro, Lugo, Galicia, España",
+    lat: 43.6631,
+    lon: -7.5867,
+    aliases: ["viveiro"],
+    zones: [{ name: "Playa de Covas", lat: 43.6701, lon: -7.6072, categories: ["beach"] }],
+  },
+  {
+    displayName: "Ortigueira, A Coruña, Galicia, España",
+    lat: 43.6772,
+    lon: -7.8535,
+    aliases: ["ortigueira"],
+    zones: [{ name: "Playa de Morouzos", lat: 43.7027, lon: -7.8493, categories: ["beach"] }],
+  },
+  {
+    displayName: "Cedeira, A Coruña, Galicia, España",
+    lat: 43.6551,
+    lon: -8.0762,
+    aliases: ["cedeira"],
+    zones: [{ name: "Playa de Vilarrube", lat: 43.6717, lon: -8.0651, categories: ["beach"] }],
+  },
+  {
+    displayName: "Ferrol, A Coruña, Galicia, España",
+    lat: 43.4832,
+    lon: -8.2369,
+    aliases: ["ferrol"],
+    zones: [
+      { name: "Playa de Doniños", lat: 43.5017, lon: -8.2921, categories: ["beach"] },
+      { name: "Paseo de la Malata", lat: 43.4832, lon: -8.2369, categories: ["urbanPath"] },
+    ],
+  },
+  {
+    displayName: "Muros, A Coruña, Galicia, España",
+    lat: 42.7770,
+    lon: -9.0605,
+    aliases: ["muros"],
+    zones: [{ name: "Playa de San Francisco", lat: 42.7761, lon: -9.0590, categories: ["beach"] }],
+  },
+  {
+    displayName: "Noia, A Coruña, Galicia, España",
+    lat: 42.7822,
+    lon: -8.8836,
+    aliases: ["noia"],
+    zones: [{ name: "Playa de Testal", lat: 42.7735, lon: -8.9020, categories: ["beach"] }],
+  },
+  {
+    displayName: "O Porto do Son, A Coruña, Galicia, España",
+    lat: 42.7024,
+    lon: -9.0181,
+    aliases: ["o porto do son", "porto do son"],
+    zones: [{ name: "Playa de Area Longa", lat: 42.6890, lon: -9.0625, categories: ["beach"] }],
+  },
+  {
+    displayName: "Ribeira, A Coruña, Galicia, España",
+    lat: 42.5588,
+    lon: -8.9885,
+    aliases: ["ribeira", "santa uxia de ribeira"],
+    zones: [{ name: "Playa de Coroso", lat: 42.5622, lon: -8.9945, categories: ["beach"] }],
+  },
+  {
+    displayName: "Boiro, A Coruña, Galicia, España",
+    lat: 42.6486,
+    lon: -8.8814,
+    aliases: ["boiro"],
+    zones: [{ name: "Playa de Barraña", lat: 42.6389, lon: -8.8737, categories: ["beach"] }],
+  },
+  {
+    displayName: "Vilagarcía de Arousa, Pontevedra, Galicia, España",
+    lat: 42.5967,
+    lon: -8.7669,
+    aliases: ["vilagarcia", "vilagarcia de arousa"],
+    zones: [{ name: "Playa de Compostela", lat: 42.6058, lon: -8.7733, categories: ["beach"] }],
+  },
+  {
+    displayName: "Sanxenxo, Pontevedra, Galicia, España",
+    lat: 42.4003,
+    lon: -8.8107,
+    aliases: ["sanxenxo"],
+    zones: [
+      { name: "Playa de Silgar", lat: 42.3987, lon: -8.8074, categories: ["beach"] },
+      { name: "Paseo de Sanxenxo", lat: 42.4003, lon: -8.8107, categories: ["urbanPath"] },
+    ],
+  },
+  {
+    displayName: "O Grove, Pontevedra, Galicia, España",
+    lat: 42.4863,
+    lon: -8.8712,
+    aliases: ["o grove", "grove"],
+    zones: [{ name: "Playa de A Lanzada", lat: 42.4489, lon: -8.8570, categories: ["beach"] }],
+  },
+  {
+    displayName: "Pontevedra, Galicia, España",
+    lat: 42.4310,
+    lon: -8.6444,
+    aliases: ["pontevedra"],
+    zones: [{ name: "Paseo das Corbaceiras", lat: 42.4310, lon: -8.6444, categories: ["urbanPath", "cycleway"] }],
+  },
+  {
+    displayName: "Baiona, Pontevedra, Galicia, España",
+    lat: 42.1198,
+    lon: -8.8451,
+    aliases: ["baiona", "bayona"],
+    zones: [{ name: "Playa de América", lat: 42.1275, lon: -8.8451, categories: ["beach"] }],
+  },
+  {
+    displayName: "A Guarda, Pontevedra, Galicia, España",
+    lat: 41.9018,
+    lon: -8.8735,
+    aliases: ["a guarda", "guarda"],
+    zones: [{ name: "Playa do Muíño", lat: 41.9089, lon: -8.8829, categories: ["beach"] }],
   },
   {
     displayName: "Madrid, Comunidad de Madrid, España",
