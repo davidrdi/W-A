@@ -3,9 +3,8 @@ import type { ScoredSpot, SpotsResponse } from "@w-a/shared";
 import { z } from "zod";
 
 import { SPORT_VALUES, isWaterSport } from "../lib/sport.js";
-import { resolveLocality } from "../services/geocoding.js";
-import { findSpots } from "../services/spots.js";
 import { getMarineSnapshots } from "../services/marine.js";
+import { resolveZones } from "../services/zones.js";
 import { getWeatherSnapshots } from "../services/weather.js";
 import { scoreBandFor, scoreLandSport, scoreWaterSport } from "../scoring/rules.js";
 
@@ -24,12 +23,11 @@ export async function registerSpotsRoute(app: FastifyInstance) {
     }
     const { sport, locality } = parsed.data;
 
-    const area = await resolveLocality(locality);
-    const spots = await findSpots(sport, area.areaId);
-    const localityCenter = { lat: area.lat, lon: area.lon };
+    const zones = await resolveZones(sport, locality, 8);
+    const { spots, localityCenter } = zones;
 
     if (spots.length === 0) {
-      const empty: SpotsResponse = { locality: area.displayName, sport, localityCenter, spots: [] };
+      const empty: SpotsResponse = { locality: zones.locality, sport, localityCenter, spots: [] };
       return empty;
     }
 
@@ -50,7 +48,7 @@ export async function registerSpotsRoute(app: FastifyInstance) {
       });
     }
 
-    const response: SpotsResponse = { locality: area.displayName, sport, localityCenter, spots: scored };
+    const response: SpotsResponse = { locality: zones.locality, sport, localityCenter, spots: scored };
     return response;
   });
 }

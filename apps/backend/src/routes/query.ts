@@ -4,9 +4,8 @@ import { z } from "zod";
 
 import { isWaterSport } from "../lib/sport.js";
 import { parseQueryIntent, rankSpots, type RankingCandidate } from "../services/claude.js";
-import { resolveLocality } from "../services/geocoding.js";
 import { getMarineSnapshots } from "../services/marine.js";
-import { findSpots } from "../services/spots.js";
+import { resolveZones } from "../services/zones.js";
 import { getWeatherSnapshots } from "../services/weather.js";
 import { scoreBandFor, scoreLandSport, scoreWaterSport } from "../scoring/rules.js";
 
@@ -33,14 +32,13 @@ export async function registerQueryRoute(app: FastifyInstance) {
     const { text } = parsed.data;
 
     const intent = await parseQueryIntent(text);
-    const area = await resolveLocality(intent.localityText);
-    const localityCenter = { lat: area.lat, lon: area.lon };
+    const zones = await resolveZones(intent.sport, intent.localityText, 12);
+    const localityCenter = zones.localityCenter;
 
-    const allSpots = await findSpots(intent.sport, area.areaId, 12);
-    const candidates = allSpots.filter((spot) => passesFilters(spot, intent.filters));
+    const candidates = zones.spots.filter((spot) => passesFilters(spot, intent.filters));
 
     if (candidates.length === 0) {
-      const empty: QueryResponse = { intent, locality: area.displayName, localityCenter, spots: [] };
+      const empty: QueryResponse = { intent, locality: zones.locality, localityCenter, spots: [] };
       return empty;
     }
 
@@ -91,7 +89,7 @@ export async function registerQueryRoute(app: FastifyInstance) {
       rankedSpots.push({ ...spot, score, scoreBand: scoreBandFor(score), headline: spot.name, reasoning: "" });
     }
 
-    const response: QueryResponse = { intent, locality: area.displayName, localityCenter, spots: rankedSpots };
+    const response: QueryResponse = { intent, locality: zones.locality, localityCenter, spots: rankedSpots };
     return response;
   });
 }
