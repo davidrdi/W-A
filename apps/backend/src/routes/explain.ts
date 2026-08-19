@@ -48,7 +48,7 @@ const groundingPayloadSchema = z.object({
   sport: z.enum(SPORT_VALUES),
   spotName: z.string(),
   score: z.number(),
-  scoreBand: z.enum(["green", "amber", "red"]),
+  scoreBand: z.enum(["green", "yellow", "orange", "red"]),
   weather: weatherSchema,
   marine: marineSchema.optional(),
   amenities: amenitiesSchema.optional(),

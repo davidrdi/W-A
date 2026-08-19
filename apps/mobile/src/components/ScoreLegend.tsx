@@ -1,20 +1,16 @@
 import { StyleSheet, Text, View } from "react-native";
 
-import { SCORE_BAND_COLOR } from "../mapIcons";
+import { SCORE_BAND_COLOR, SCORE_BAND_LABEL } from "../mapIcons";
 
-const ITEMS: { band: keyof typeof SCORE_BAND_COLOR; label: string }[] = [
-  { band: "green", label: "Buenas condiciones" },
-  { band: "amber", label: "Regular" },
-  { band: "red", label: "Evita hoy" },
-];
+const BANDS: (keyof typeof SCORE_BAND_COLOR)[] = ["green", "yellow", "orange", "red"];
 
 export function ScoreLegend() {
   return (
     <View style={styles.row}>
-      {ITEMS.map((item) => (
-        <View key={item.band} style={styles.item}>
-          <View style={[styles.dot, { backgroundColor: SCORE_BAND_COLOR[item.band] }]} />
-          <Text style={styles.label}>{item.label}</Text>
+      {BANDS.map((band) => (
+        <View key={band} style={styles.item}>
+          <View style={[styles.dot, { backgroundColor: SCORE_BAND_COLOR[band] }]} />
+          <Text style={styles.label}>{SCORE_BAND_LABEL[band]}</Text>
         </View>
       ))}
     </View>

@@ -15,8 +15,6 @@ const config: Config = {
         textSecondary: "var(--color-text-secondary)",
         danger: "var(--color-danger)",
         scoreGreen: "var(--color-score-green)",
-        scoreAmber: "var(--color-score-amber)",
-        scoreRed: "var(--color-score-red)",
       },
     },
   },

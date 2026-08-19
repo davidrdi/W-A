@@ -69,7 +69,7 @@ export interface RecommendResponse {
   spots: RecommendedSpot[];
 }
 
-export type ScoreBand = "green" | "amber" | "red";
+export type ScoreBand = "green" | "yellow" | "orange" | "red";
 
 export interface ScoredSpot extends Spot {
   score: number;

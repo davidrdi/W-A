@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { Favorite, ScoredSpot } from "@w-a/shared";
+import type { Favorite, ScoreBand, ScoredSpot } from "@w-a/shared";
 import { SCORE_BAND_COLOR, SPORT_LABEL } from "@w-a/shared";
 
 import { fetchSpotScore } from "../lib/api";
@@ -22,7 +22,7 @@ function toScoredSpot(favorite: Favorite): ScoredSpot {
   };
 }
 
-type ScoreState = { kind: "loading" } | { kind: "error" } | { kind: "ready"; score: number; scoreBand: "green" | "amber" | "red" };
+type ScoreState = { kind: "loading" } | { kind: "error" } | { kind: "ready"; score: number; scoreBand: ScoreBand };
 
 /** Tarjeta de un favorito: pide su score actual (ligero, sin el desglose de /explain). */
 function FavoriteCard({ favorite, onOpen }: { favorite: Favorite; onOpen: () => void }) {

@@ -9,7 +9,7 @@ import { SportPin } from "../../src/components/SportPin";
 function favoriteToSpot(favorite: Favorite): ScoredSpot {
   // El score/banda son provisionales: el modal pide la explicación real a
   // /explain en cuanto se abre, que recalcula el score con la meteo actual.
-  return { id: favorite.spotId, name: favorite.spotName, lat: favorite.lat, lon: favorite.lon, sport: favorite.sport, score: 0, scoreBand: "amber" };
+  return { id: favorite.spotId, name: favorite.spotName, lat: favorite.lat, lon: favorite.lon, sport: favorite.sport, score: 0, scoreBand: "yellow" };
 }
 
 export default function FavoritesScreen() {

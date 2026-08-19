@@ -14,9 +14,12 @@ function clampScore(score: number): number {
   return Math.round(Math.min(100, Math.max(0, score)));
 }
 
+// Cuatro bandas a partes iguales sobre el 0-100: verde/amarillo/naranja/rojo,
+// de mejor a peor condición.
 export function scoreBandFor(score: number): ScoreBand {
-  if (score >= 70) return "green";
-  if (score >= 40) return "amber";
+  if (score >= 75) return "green";
+  if (score >= 50) return "yellow";
+  if (score >= 25) return "orange";
   return "red";
 }
 
@@ -62,8 +65,9 @@ function build(base: number, raw: (RawFactor | null)[]): ScoreBreakdown {
 
 function headlineFor(score: number, sortedFactors: RawFactor[]): string {
   const worst = sortedFactors[0];
-  if (score >= 70 || !worst || worst.impact > -8) {
-    return score >= 70 ? "Buenas condiciones" : "Condiciones aceptables";
+  const isGreen = scoreBandFor(score) === "green";
+  if (isGreen || !worst || worst.impact > -8) {
+    return isGreen ? "Buenas condiciones" : "Condiciones aceptables";
   }
   return `${worst.label}: ${worst.detail}`;
 }

@@ -181,7 +181,7 @@ describe("rankSpots", () => {
     });
 
     const result = await rankSpots("quiero playa en Vigo", "playa", [
-      { spotId: "way/1", spotName: "Praia A", score: 60, scoreBand: "amber", weather: PAYLOAD.weather },
+      { spotId: "way/1", spotName: "Praia A", score: 60, scoreBand: "yellow", weather: PAYLOAD.weather },
       { spotId: "way/2", spotName: "Praia B", score: 90, scoreBand: "green", weather: PAYLOAD.weather },
     ]);
 
@@ -223,7 +223,7 @@ describe("caché de respuestas de la IA", () => {
     });
 
     await recommendAlternatives(PAYLOAD, NEARBY);
-    await recommendAlternatives({ ...PAYLOAD, score: 40, scoreBand: "amber" as const }, NEARBY);
+    await recommendAlternatives({ ...PAYLOAD, score: 40, scoreBand: "yellow" as const }, NEARBY);
 
     expect(mockCreate).toHaveBeenCalledTimes(2);
   });

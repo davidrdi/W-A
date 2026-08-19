@@ -30,7 +30,7 @@ const SPOTS_RESPONSE = {
       lon: -8.4189,
       sport: "running",
       score: 55,
-      scoreBand: "amber",
+      scoreBand: "yellow",
     },
     {
       id: "way/3",
@@ -79,9 +79,9 @@ test.describe("pestaña Mapa: pines de las zonas encontradas", () => {
       ),
     );
 
-    // verde / ámbar / rojo de SCORE_BAND_COLOR en @w-a/shared.
+    // verde / amarillo / rojo de SCORE_BAND_COLOR en @w-a/shared.
     expect(colors.join(" ")).toContain("rgb(22, 163, 74)");
-    expect(colors.join(" ")).toContain("rgb(245, 158, 11)");
+    expect(colors.join(" ")).toContain("rgb(234, 179, 8)");
     expect(colors.join(" ")).toContain("rgb(220, 38, 38)");
   });
 

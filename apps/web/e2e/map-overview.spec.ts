@@ -9,7 +9,7 @@ const OVERVIEW_RUNNING = {
   sport: "running",
   spots: [
     { id: "seed/parque-a", name: "Parque A", locality: "A Coruña, Galicia, España", lat: 43.36, lon: -8.41, sport: "running", score: 82, scoreBand: "green" },
-    { id: "seed/parque-b", name: "Parque B", locality: "Madrid, Comunidad de Madrid, España", lat: 40.42, lon: -3.68, sport: "running", score: 55, scoreBand: "amber" },
+    { id: "seed/parque-b", name: "Parque B", locality: "Madrid, Comunidad de Madrid, España", lat: 40.42, lon: -3.68, sport: "running", score: 55, scoreBand: "yellow" },
   ],
 };
 

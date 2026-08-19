@@ -68,7 +68,7 @@ test.describe("pestaña Mapa: la búsqueda siempre cuenta cómo ha ido", () => {
           localityCenter: { lat: 43.3623, lon: -8.4115 },
           spots: [
             { id: "way/1", name: "Parque", lat: 43.35, lon: -8.4, sport: "running", score: 80, scoreBand: "green" },
-            { id: "way/2", name: "Paseo", lat: 43.37, lon: -8.41, sport: "running", score: 50, scoreBand: "amber" },
+            { id: "way/2", name: "Paseo", lat: 43.37, lon: -8.41, sport: "running", score: 50, scoreBand: "yellow" },
           ],
         }),
       }),

@@ -133,7 +133,7 @@ describe("POST /explain/followup", () => {
           sport: "running",
           spotName: "X",
           score: 50,
-          scoreBand: "amber",
+          scoreBand: "yellow",
           weather: CLEAR_DAY,
         },
         priorMessages: [],

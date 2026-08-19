@@ -175,12 +175,14 @@ describe("scoreLandSport / scoreWaterSport (dispatchers)", () => {
 });
 
 describe("scoreBandFor", () => {
-  it("clasifica en verde, ámbar o rojo según los umbrales", () => {
+  it("clasifica en verde/amarillo/naranja/rojo según los umbrales", () => {
     expect(scoreBandFor(100)).toBe("green");
-    expect(scoreBandFor(70)).toBe("green");
-    expect(scoreBandFor(69)).toBe("amber");
-    expect(scoreBandFor(40)).toBe("amber");
-    expect(scoreBandFor(39)).toBe("red");
+    expect(scoreBandFor(75)).toBe("green");
+    expect(scoreBandFor(74)).toBe("yellow");
+    expect(scoreBandFor(50)).toBe("yellow");
+    expect(scoreBandFor(49)).toBe("orange");
+    expect(scoreBandFor(25)).toBe("orange");
+    expect(scoreBandFor(24)).toBe("red");
     expect(scoreBandFor(0)).toBe("red");
   });
 });

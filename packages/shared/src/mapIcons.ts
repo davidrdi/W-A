@@ -67,8 +67,16 @@ export const SPORT_LABEL: Record<Sport, string> = {
 
 export const SCORE_BAND_COLOR: Record<ScoreBand, string> = {
   green: "#16a34a",
-  amber: "#f59e0b",
+  yellow: "#eab308",
+  orange: "#f97316",
   red: "#dc2626",
+};
+
+export const SCORE_BAND_LABEL: Record<ScoreBand, string> = {
+  green: "Buenas condiciones",
+  yellow: "Aceptable",
+  orange: "Regular",
+  red: "Evita hoy",
 };
 
 // HTML de un pin en forma de lágrima (border-radius 50% 50% 50% 0 +
