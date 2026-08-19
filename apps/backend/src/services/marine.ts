@@ -1,8 +1,12 @@
 import type { MarineSnapshot, TideEvent } from "@w-a/shared";
-import { getOrSet, ONE_HOUR_MS } from "../lib/cache.js";
+import { getOrSet, hashKey, ONE_HOUR_MS } from "../lib/cache.js";
 
 // Host distinto del forecast normal.
 const MARINE_URL = "https://marine-api.open-meteo.com/v1/marine";
+
+// Ver weather.ts: con listas grandes (todas las playas de España) una sola
+// URL con miles de pares lat/lon supera límites prácticos de longitud.
+const BATCH_SIZE = 100;
 
 interface MarineHourly {
   time: string[];
@@ -23,6 +27,12 @@ function round(value: number, decimals: number) {
 
 function average(values: number[]) {
   return values.length === 0 ? 0 : values.reduce((a, b) => a + b, 0) / values.length;
+}
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) chunks.push(items.slice(i, i + size));
+  return chunks;
 }
 
 /**
@@ -59,10 +69,8 @@ export function extractTides(hourly: MarineHourly): TideEvent[] {
   return tides;
 }
 
-export async function getMarineSnapshots(coords: { lat: number; lon: number }[]): Promise<MarineSnapshot[]> {
-  if (coords.length === 0) return [];
-
-  const cacheKey = `marine:${coords.map((c) => `${round(c.lat, 2)},${round(c.lon, 2)}`).join("|")}`;
+async function fetchBatch(coords: { lat: number; lon: number }[]): Promise<MarineSnapshot[]> {
+  const cacheKey = hashKey("marine", coords.map((c) => `${round(c.lat, 2)},${round(c.lon, 2)}`));
 
   return getOrSet(cacheKey, ONE_HOUR_MS, async () => {
     const url = new URL(MARINE_URL);
@@ -97,4 +105,11 @@ export async function getMarineSnapshots(coords: { lat: number; lon: number }[])
       };
     });
   });
+}
+
+export async function getMarineSnapshots(coords: { lat: number; lon: number }[]): Promise<MarineSnapshot[]> {
+  if (coords.length === 0) return [];
+
+  const batches = await Promise.all(chunk(coords, BATCH_SIZE).map(fetchBatch));
+  return batches.flat();
 }

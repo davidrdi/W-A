@@ -12,6 +12,7 @@ import type {
   SpotExplanation,
   SpotGroundingPayload,
   Sport,
+  SpotScoresResponse,
   SpotsResponse,
   WeatherResponse,
 } from "@w-a/shared";
@@ -62,6 +63,12 @@ export function fetchSpots(sport: Sport, locality: string): Promise<SpotsRespons
 // localidad — es lo que se ve al elegir deporte, antes de buscar nada.
 export function fetchOverview(sport: Sport): Promise<OverviewResponse> {
   return getJson<OverviewResponse>("/overview", { sport });
+}
+
+// Score actual de un punto, sin el desglose completo de /explain — pensado
+// para listas (tarjetas de favoritos) donde solo hace falta el número.
+export function fetchSpotScore(sport: Sport, lat: number, lon: number): Promise<SpotScoresResponse> {
+  return getJson<SpotScoresResponse>("/spot-scores", { sport, lat: String(lat), lon: String(lon) });
 }
 
 export function fetchWeather(locality: string): Promise<WeatherResponse> {

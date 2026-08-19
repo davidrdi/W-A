@@ -70,4 +70,42 @@ describe("getWeatherSnapshots", () => {
 
     await expect(getWeatherSnapshots([{ lat: 1, lon: 1 }])).rejects.toThrow("Open-Meteo respondió 503");
   });
+
+  it("trocea listas grandes en varias peticiones (una URL con miles de coordenadas no es viable)", async () => {
+    const hourly = hourlyFixture(["2026-08-16", "2026-08-17"], [0, 0]);
+    const fetchMock = vi.fn().mockImplementation(async (url: URL) => {
+      // Cada petición devuelve tantos snapshots como coordenadas trajera (mismo patrón que Open-Meteo real).
+      const n = url.searchParams.get("latitude")!.split(",").length;
+      return { ok: true, json: async () => Array.from({ length: n }, () => ({ hourly })) };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    // 250 coordenadas > el tamaño de lote (100): tienen que salir en 3 peticiones, no en una.
+    const coords = Array.from({ length: 250 }, (_, i) => ({ lat: 40 + i * 0.001, lon: -3 - i * 0.001 }));
+    const snapshots = await getWeatherSnapshots(coords);
+
+    expect(snapshots).toHaveLength(250);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("la clave de caché de un lote nunca depende de cuántas coordenadas tenga (índice de Postgres acotado)", async () => {
+    const hourly = hourlyFixture(["2026-08-16", "2026-08-17"], [0, 0]);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(async (url: URL) => {
+        const n = url.searchParams.get("latitude")!.split(",").length;
+        return { ok: true, json: async () => Array.from({ length: n }, () => ({ hourly })) };
+      }),
+    );
+
+    const coords = Array.from({ length: 100 }, (_, i) => ({ lat: 40 + i * 0.001, lon: -3 - i * 0.001 }));
+    await getWeatherSnapshots(coords);
+
+    // La caché en memoria (única forma de inspeccionarla desde aquí sin Supabase)
+    // guarda claves cortas y con forma de hash, no la lista entera de coordenadas.
+    const { __clearMemoryCache, __memoryKeys } = await import("../lib/cache.js");
+    const keys = __memoryKeys();
+    expect(keys.some((k) => k.startsWith("weather:") && k.length < 60)).toBe(true);
+    __clearMemoryCache();
+  });
 });

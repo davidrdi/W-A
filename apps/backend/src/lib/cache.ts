@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { getSupabaseAdmin } from "../services/supabaseAdmin.js";
 
 // Caché en dos niveles:
@@ -80,6 +82,24 @@ export async function getOrSet<T>(key: string, ttlMs: number, fn: () => Promise<
 /** Solo para tests: vacía el nivel de memoria. */
 export function __clearMemoryCache() {
   memory.clear();
+}
+
+/** Solo para tests: las claves actualmente en el nivel de memoria. */
+export function __memoryKeys(): string[] {
+  return [...memory.keys()];
+}
+
+/**
+ * Clave de caché acotada a partir de una lista arbitrariamente larga de
+ * partes (p.ej. coordenadas). `key` es primary key de texto en Postgres, y
+ * un índice btree tiene un límite duro (~2.7 KB) por valor indexado — una
+ * clave construida uniendo miles de coordenadas (como al pedir meteo para
+ * TODAS las playas de España) lo revienta. El hash la deja siempre corta,
+ * pase lo que pase de largo sea la lista.
+ */
+export function hashKey(prefix: string, parts: string[]): string {
+  const digest = createHash("sha256").update(parts.slice().sort().join("|")).digest("hex").slice(0, 32);
+  return `${prefix}:${digest}`;
 }
 
 export const ONE_HOUR_MS = 60 * 60 * 1000;

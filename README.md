@@ -62,9 +62,22 @@ npm run test:e2e --workspace apps/web
 Next.js (App Router) + Tailwind + Leaflet vanilla, con la misma arquitectura que
 [Trebo](https://github.com/davidrdi/trebo) (mismo autor): mapa Leaflet imperativo con tiles de
 CARTO Voyager, pines por `L.divIcon` con HTML generado desde `buildPinHtml` (shared), sin Google
-Maps. Cubre las pantallas "Buscar" (cuestionario en lenguaje natural) y "Mapa" (deporte +
-localidad); auth/favoritos y los anillos de score multi-deporte del modal aún no están portados
-a web (sí en mobile, ver más abajo).
+Maps. Dos pestañas: **Mapa** y **Favoritos**.
+
+**Mapa** tiene dos modos:
+- *Vista general* (la que se ve al entrar, sin buscar nada): un pin por zona de todo el país,
+  coloreado por score, para el deporte elegido con el toggle. Playa/surf/windsurf usan TODAS las
+  playas de España en vivo desde OSM (`GET /overview`, ver más abajo); running/paseo/senderismo/bici
+  usan el conjunto precalculado de `data/seedZones.ts` (representativo, no exhaustivo).
+- *Búsqueda por localidad*: acción explícita que sustituye la vista general por datos reales de
+  OSM para esa localidad concreta (`GET /spots`), con un enlace "← Ver todo el país" para volver.
+
+**Favoritos** lista tarjetas con el score actual de cada zona guardada (`GET /spot-scores`, ligero,
+sin el desglose completo de `/explain`); tocar una abre el mismo panel de detalle que en el mapa.
+
+El buscador en lenguaje natural (antigua pestaña "Buscar") se retiró de la navegación — el
+endpoint `POST /query` sigue existiendo en el backend por si se retoma más adelante, pero no hay
+ninguna pantalla de la web que lo llame ahora mismo.
 
 `@w-a/shared` es un paquete `"type": "module"` con `moduleResolution: nodenext` (lo exige
 ejecutar el backend directo con `tsx`/Node) — sus re-exports internos usan extensión `.js` aunque
@@ -136,6 +149,16 @@ Presupuesto de IA: las llamadas a Claude se cachean por el contenido exacto de l
 así que abrir diez veces el mismo pin cuesta una sola llamada, y repetir una búsqueda no
 vuelve a pagar el parseo de intención. Los errores nunca se cachean. El SDK va con
 `maxRetries: 1` (por defecto son 2, es decir hasta 3 llamadas facturadas por cada fallo).
+
+**Claves acotadas (`hashKey`)**: `key` es primary key de texto en Postgres, y un índice btree
+tiene un límite duro (~2.7 KB) por valor indexado. Las claves de meteo/marino se construían
+uniendo las coordenadas de la petición — con la vista general de "todas las playas de España"
+(miles de coordenadas) eso revienta el límite. `lib/cache.ts#hashKey` las deja siempre cortas
+(hash de 32 caracteres) pase lo que pase de larga la lista de partes.
+
+**Troceado de peticiones a Open-Meteo**: por el mismo motivo (miles de coordenadas), una sola
+URL con todas ellas supera límites prácticos de longitud. `weather.ts`/`marine.ts` trocean en
+lotes de 100 y piden (y cachean) cada lote por separado.
 
 ## Diseño de mapa
 

@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { AlternativesResponse, ScoredSpot, SpotExplanation, TideEvent } from "@w-a/shared";
-import { SCORE_BAND_COLOR } from "@w-a/shared";
+import { SCORE_BAND_COLOR, sunTimes } from "@w-a/shared";
 
 import { explainSpot, fetchAlternatives } from "../lib/api";
 import { useAuth } from "./auth/AuthProvider";
@@ -75,6 +75,14 @@ export function SpotDetailPanel({ spot, distanceLabel, nearbySpots = [], onClose
       .catch((error) => {
         setLoadState({ kind: "error", message: error instanceof Error ? error.message : "No se pudo cargar" });
       });
+  }, [spot]);
+
+  // Cálculo puro (sin API): posición solar del punto para hoy. Precisión de
+  // un par de minutos — ver packages/shared/src/solar.ts para el detalle.
+  const sunset = useMemo(() => {
+    if (!spot) return null;
+    const times = sunTimes(spot.lat, spot.lon, new Date());
+    return times ? new Date(times.sunsetUtc) : null;
   }, [spot]);
 
   if (!spot) return null;
@@ -162,6 +170,12 @@ export function SpotDetailPanel({ spot, distanceLabel, nearbySpots = [], onClose
               {marine && <Metric label="Oleaje" value={`${marine.waveHeightAvgM} m (máx ${marine.waveHeightMaxM})`} />}
               {marine && <Metric label="Agua" value={`${marine.seaSurfaceTempC} °C`} />}
               {marine?.tides && marine.tides.length > 0 && <Tides tides={marine.tides} />}
+              {sunset && (
+                <Metric
+                  label="Puesta de sol"
+                  value={sunset.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}
+                />
+              )}
             </div>
 
             {/* Diagnóstico: por qué puntúa así. Sale del scoring, no de la IA. */}
@@ -172,13 +186,13 @@ export function SpotDetailPanel({ spot, distanceLabel, nearbySpots = [], onClose
                     {factor.label} <span className="text-textSecondary">· {factor.detail}</span>
                   </span>
                   <span className={factor.impact < 0 ? "font-semibold text-danger" : "font-semibold text-scoreGreen"}>
-                    {factor.impact > 0 ? `+${factor.impact}` : factor.impact}
+                    {factor.impact > 0 ? `+${factor.impact}` : factor.impact} pts
                   </span>
                 </div>
               ))}
             </div>
 
-            {(amenities?.naturist || amenities?.dogsAllowed) && (
+            {(amenities?.naturist || amenities?.dogsAllowed || amenities?.lifeguard) && (
               <div className="flex flex-wrap gap-2">
                 {amenities?.naturist && (
                   <span className="rounded-full bg-surface px-3 py-1 text-xs text-textSecondary">Playa nudista</span>
@@ -186,6 +200,16 @@ export function SpotDetailPanel({ spot, distanceLabel, nearbySpots = [], onClose
                 {amenities?.dogsAllowed && (
                   <span className="rounded-full bg-surface px-3 py-1 text-xs text-textSecondary">
                     Admite mascotas
+                  </span>
+                )}
+                {amenities?.lifeguard === "yes" && (
+                  <span className="rounded-full bg-surface px-3 py-1 text-xs text-textSecondary">
+                    Con socorrista
+                  </span>
+                )}
+                {amenities?.lifeguard === "seasonal" && (
+                  <span className="rounded-full bg-surface px-3 py-1 text-xs text-textSecondary">
+                    Socorrista en temporada alta
                   </span>
                 )}
               </div>

@@ -42,6 +42,16 @@ describe("allSeedZones", () => {
     expect(zones.every((z) => z.id.startsWith("seed/"))).toBe(true);
   });
 
+  it("cubre zonas de running/paseo en todo el país, no solo el norte", () => {
+    const localities = new Set(allSeedZones("running").map((z) => z.locality));
+
+    // Una muestra de comunidades que antes no tenían ninguna zona de tierra:
+    // Aragón, Castilla y León, Andalucía interior, Murcia, Baleares, Canarias.
+    for (const needle of ["Zaragoza", "Valladolid", "Córdoba", "Murcia", "Palma", "Las Palmas"]) {
+      expect([...localities].some((l) => l.includes(needle))).toBe(true);
+    }
+  });
+
   it("cubre la costa gallega de Lugo a Pontevedra, no solo A Coruña y Vigo", () => {
     const localities = new Set(allSeedZones("playa").map((z) => z.locality));
 

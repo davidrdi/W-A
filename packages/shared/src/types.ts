@@ -20,12 +20,15 @@ export interface HealthResponse {
   service: string;
 }
 
-// De tags de OSM (naturist=yes, dog=yes/leashed/no). Todos opcionales:
-// ausencia de campo significa "sin dato", no "no". `dogsAllowed` aplica a
-// cualquier categoría (parques, senderos...), `naturist` solo a playas.
+// De tags de OSM (naturist=yes, dog=yes/leashed/no, lifeguard=yes/no/seasonal).
+// Todos opcionales: ausencia de campo significa "sin dato", no "no".
+// `dogsAllowed` aplica a cualquier categoría (parques, senderos...);
+// `naturist`/`lifeguard` solo tienen sentido en playas.
 export interface SpotAmenities {
   naturist?: boolean;
   dogsAllowed?: boolean;
+  /** "seasonal" = solo en temporada alta, ver groundingPayload para el texto exacto de OSM. */
+  lifeguard?: "yes" | "no" | "seasonal";
 }
 
 export interface Spot {
@@ -82,15 +85,23 @@ export interface ScoredSpot extends Spot {
 export type ZonesSource = "osm" | "seed";
 
 export interface OverviewSpot extends ScoredSpot {
-  locality: string;
+  /**
+   * Ausente en las playas: salen en vivo de Overpass a escala de todo el
+   * país, sin una consulta de localidad de por medio que la dé.
+   */
+  locality?: string;
 }
 
 /**
- * Vista general por deporte, sin localidad: un pin por cada zona precalculada
- * de todo el país, para verse de golpe al elegir deporte, sin tener que
- * buscar ni hacer zoom. Se sirve siempre desde el conjunto precalculado —
- * pedir esto en vivo contra Overpass para todo el país en cada carga no es
- * viable con APIs públicas que limitan por IP.
+ * Vista general por deporte, sin localidad: un pin por zona, coloreado por
+ * score, sin tener que buscar ni hacer zoom.
+ *
+ * Playa/surf/windsurf: TODAS las playas de España, en vivo desde OSM — es un
+ * tag concreto y acotado (natural=beach), factible a escala nacional.
+ * Running/paseo/senderismo/bici: zonas representativas precalculadas
+ * (data/seedZones.ts), no exhaustivas — la consulta equivalente en Overpass
+ * (sendas y caminos peatonales de TODA España) es demasiado amplia para
+ * pedirla en vivo sin arriesgar el servicio.
  */
 export interface OverviewResponse {
   sport: Sport;

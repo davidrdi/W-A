@@ -15,6 +15,7 @@ import { explainLandSport, explainWaterSport } from "../scoring/rules.js";
 const amenitiesSchema = z.object({
   naturist: z.boolean().optional(),
   dogsAllowed: z.boolean().optional(),
+  lifeguard: z.enum(["yes", "no", "seasonal"]).optional(),
 });
 
 // spotId/lat/lon vienen del spot ya listado por /spots — las amenidades

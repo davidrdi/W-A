@@ -1,7 +1,13 @@
 import type { WeatherSnapshot } from "@w-a/shared";
-import { getOrSet, ONE_HOUR_MS } from "../lib/cache.js";
+import { getOrSet, hashKey, ONE_HOUR_MS } from "../lib/cache.js";
 
 const OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast";
+
+// Con listas grandes (p.ej. TODAS las playas de España para la vista general)
+// una sola URL con miles de pares lat/lon supera límites prácticos de
+// longitud de muchos servidores/proxies intermedios. Se trocea en lotes
+// razonables y cada lote se pide (y cachea) por separado.
+const BATCH_SIZE = 100;
 
 interface OpenMeteoHourly {
   time: string[];
@@ -18,6 +24,12 @@ interface OpenMeteoResponse {
 function round(value: number, decimals: number) {
   const factor = 10 ** decimals;
   return Math.round(value * factor) / factor;
+}
+
+function chunk<T>(items: T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) chunks.push(items.slice(i, i + size));
+  return chunks;
 }
 
 // Agrupa por fecha usando el propio timestamp local que devuelve la API
@@ -42,10 +54,8 @@ function daySummary(hourly: OpenMeteoHourly, date: string) {
   };
 }
 
-export async function getWeatherSnapshots(coords: { lat: number; lon: number }[]): Promise<WeatherSnapshot[]> {
-  if (coords.length === 0) return [];
-
-  const cacheKey = `weather:${coords.map((c) => `${round(c.lat, 2)},${round(c.lon, 2)}`).join("|")}`;
+async function fetchBatch(coords: { lat: number; lon: number }[]): Promise<WeatherSnapshot[]> {
+  const cacheKey = hashKey("weather", coords.map((c) => `${round(c.lat, 2)},${round(c.lon, 2)}`));
 
   return getOrSet(cacheKey, ONE_HOUR_MS, async () => {
     const url = new URL(OPEN_METEO_URL);
@@ -79,4 +89,11 @@ export async function getWeatherSnapshots(coords: { lat: number; lon: number }[]
       };
     });
   });
+}
+
+export async function getWeatherSnapshots(coords: { lat: number; lon: number }[]): Promise<WeatherSnapshot[]> {
+  if (coords.length === 0) return [];
+
+  const batches = await Promise.all(chunk(coords, BATCH_SIZE).map(fetchBatch));
+  return batches.flat();
 }

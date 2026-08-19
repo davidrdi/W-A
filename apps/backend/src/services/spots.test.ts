@@ -174,4 +174,31 @@ describe("findSpots", () => {
     expect(spots[1].amenities).toBeUndefined();
     expect(spots[2].amenities).toEqual({ dogsAllowed: false });
   });
+
+  it("extrae si hay socorrista (yes/no/seasonal) de OSM", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          elements: [
+            { type: "way", id: 1, center: { lat: 43.1, lon: -8.1 }, tags: { natural: "beach", lifeguard: "yes" } },
+            {
+              type: "way",
+              id: 2,
+              center: { lat: 43.2, lon: -8.2 },
+              tags: { natural: "beach", lifeguard: "seasonal" },
+            },
+            { type: "way", id: 3, center: { lat: 43.3, lon: -8.3 }, tags: { natural: "beach" } },
+          ],
+        }),
+      }),
+    );
+
+    const spots = await findSpots("playa", 3_600_000_110, 3);
+
+    expect(spots[0].amenities).toEqual({ lifeguard: "yes" });
+    expect(spots[1].amenities).toEqual({ lifeguard: "seasonal" });
+    expect(spots[2].amenities).toBeUndefined();
+  });
 });

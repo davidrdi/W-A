@@ -173,10 +173,11 @@ export function SpotDetailModal({ spot, distanceLabel, onClose }: Props) {
               </View>
               <AmenityBadges amenities={explanation.groundingPayload.amenities} />
 
-              <Text style={styles.reasoning}>{explanation.reasoning}</Text>
-              {explanation.cautions.map((caution) => (
-                <Text key={caution} style={styles.caution}>
-                  ⚠ {caution}
+              {/* Diagnóstico determinista del scoring (ver apps/backend/src/scoring/rules.ts):
+                  reemplaza a los antiguos reasoning/cautions generados por IA. */}
+              {explanation.factors.map((factor) => (
+                <Text key={factor.label} style={factor.impact < 0 ? styles.caution : styles.reasoning}>
+                  {factor.label} · {factor.detail} ({factor.impact > 0 ? `+${factor.impact}` : factor.impact} pts)
                 </Text>
               ))}
 

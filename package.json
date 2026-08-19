@@ -10,7 +10,7 @@
     "mobile:start": "npm run start --workspace apps/mobile",
     "web:dev": "npm run dev --workspace apps/web",
     "typecheck": "npm run typecheck --workspace apps/backend && tsc --noEmit -p apps/mobile && tsc --noEmit -p packages/shared && npm run typecheck --workspace apps/web",
-    "test": "npm run test --workspace apps/backend"
+    "test": "npm run test --workspace apps/backend && npm run test --workspace @w-a/shared"
   },
   "devDependencies": {
     "expo": "~57.0.14",

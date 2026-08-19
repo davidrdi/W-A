@@ -55,7 +55,7 @@ const SPORT_CATEGORY: Record<Sport, SpotCategory> = {
 // municipio vecino (ver decisión "Precisión geográfica" del plan).
 const CATEGORY_QUERY: Record<SpotCategory, (areaId: number) => string> = {
   urbanPath: (areaId) => `
-    [out:json][timeout:25];
+    [out:json][timeout:55];
     area(${areaId})->.searchArea;
     (
       way["leisure"="park"](area.searchArea);
@@ -64,7 +64,7 @@ const CATEGORY_QUERY: Record<SpotCategory, (areaId: number) => string> = {
     out tags center;
   `,
   trail: (areaId) => `
-    [out:json][timeout:25];
+    [out:json][timeout:55];
     area(${areaId})->.searchArea;
     (
       relation["route"="hiking"](area.searchArea);
@@ -73,7 +73,7 @@ const CATEGORY_QUERY: Record<SpotCategory, (areaId: number) => string> = {
     out tags center;
   `,
   cycleway: (areaId) => `
-    [out:json][timeout:25];
+    [out:json][timeout:55];
     area(${areaId})->.searchArea;
     (
       relation["route"="bicycle"](area.searchArea);
@@ -82,7 +82,7 @@ const CATEGORY_QUERY: Record<SpotCategory, (areaId: number) => string> = {
     out tags center;
   `,
   beach: (areaId) => `
-    [out:json][timeout:25];
+    [out:json][timeout:55];
     area(${areaId})->.searchArea;
     (
       way["natural"="beach"](area.searchArea);
@@ -105,6 +105,10 @@ function parseAmenities(tags: Record<string, string> | undefined): SpotAmenities
 
   if (tags.dog === "yes" || tags.dog === "leashed") amenities.dogsAllowed = true;
   else if (tags.dog === "no") amenities.dogsAllowed = false;
+
+  if (tags.lifeguard === "yes" || tags.lifeguard === "no" || tags.lifeguard === "seasonal") {
+    amenities.lifeguard = tags.lifeguard;
+  }
 
   return Object.keys(amenities).length > 0 ? amenities : undefined;
 }
@@ -142,9 +146,11 @@ async function queryOverpass(query: string): Promise<OverpassResponse> {
         },
         body: new URLSearchParams({ data: query }).toString(),
         // Sin esto, una instancia que ni conecta ni responde se queda colgada
-        // sin límite claro. 30s da margen sobre el [timeout:25] de la propia
-        // consulta Overpass, para no abortar una respuesta que sí iba a llegar.
-        signal: AbortSignal.timeout(30_000),
+        // sin límite claro. 65s da margen sobre el [timeout:55] de la propia
+        // consulta Overpass (la de "todas las playas de España" es bastante
+        // más lenta que una consulta de una sola ciudad), para no abortar una
+        // respuesta que sí iba a llegar.
+        signal: AbortSignal.timeout(65_000),
       });
 
       if (!res.ok) {
