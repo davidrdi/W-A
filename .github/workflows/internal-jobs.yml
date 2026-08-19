@@ -1,0 +1,39 @@
+name: Internal jobs (zonas + notificaciones)
+
+# Dispara los jobs internos del backend que necesitan un scheduler externo
+# (el backend no tiene ninguno propio corriendo — ver README "Zonas
+# precalculadas" y "V2: notificaciones push de favoritos"). Requiere dos
+# secrets de repositorio (Settings → Secrets and variables → Actions):
+#   BACKEND_URL         https://<tu-servicio>.onrender.com (sin barra final)
+#   INTERNAL_JOB_SECRET  el mismo valor que INTERNAL_JOB_SECRET en Render
+on:
+  schedule:
+    # 04:00 UTC — de madrugada en España, tráfico mínimo. Ajusta si quieres
+    # otra hora (los campos son minuto hora día mes día-de-semana, en UTC).
+    - cron: "0 4 * * *"
+  workflow_dispatch: {} # permite lanzarlo a mano desde la pestaña Actions
+
+jobs:
+  refresh-spots:
+    runs-on: ubuntu-latest
+    steps:
+      - name: POST /internal/refresh-spots
+        run: |
+          curl --fail --silent --show-error \
+            -X POST "$BACKEND_URL/internal/refresh-spots" \
+            -H "x-internal-secret: $INTERNAL_JOB_SECRET"
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+          INTERNAL_JOB_SECRET: ${{ secrets.INTERNAL_JOB_SECRET }}
+
+  notify-favorites:
+    runs-on: ubuntu-latest
+    steps:
+      - name: POST /internal/notify-favorites
+        run: |
+          curl --fail --silent --show-error \
+            -X POST "$BACKEND_URL/internal/notify-favorites" \
+            -H "x-internal-secret: $INTERNAL_JOB_SECRET"
+        env:
+          BACKEND_URL: ${{ secrets.BACKEND_URL }}
+          INTERNAL_JOB_SECRET: ${{ secrets.INTERNAL_JOB_SECRET }}

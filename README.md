@@ -184,8 +184,11 @@ cada petición (`api_cache`, TTL 1h) — es lo único que cambia día a día; la
     desde el principio).
 - No hay scheduler propio corriendo dentro de este backend, igual que con las notificaciones de
   favoritos — hay que llamar a ese endpoint desde algo externo. Como las zonas cambian mucho
-  menos que el tiempo, con una vez al día (o incluso a la semana) sobra; reutiliza el mismo
-  `INTERNAL_JOB_SECRET` que ya tengas configurado.
+  menos que el tiempo, con una vez al día (o incluso a la semana) sobra.
+  `.github/workflows/internal-jobs.yml` ya lo hace (GitHub Actions con `schedule`, sin
+  infraestructura aparte): configura los secrets de repositorio `BACKEND_URL` e
+  `INTERNAL_JOB_SECRET` (Settings → Secrets and variables → Actions) y queda disparándose solo
+  cada madrugada — el mismo workflow llama también a `/internal/notify-favorites`.
 - **`GET /spots`, `GET /recommend`, `POST /query`** (búsqueda por localidad) leen primero de
   esta tabla (`services/zones.ts#resolveZones`, radio de 25 km alrededor del centro de la
   localidad resuelta — sin PostGIS aquí, se acota por bounding box y la distancia exacta se
@@ -322,9 +325,9 @@ evaluados hoy, calcula su score con las mismas reglas deterministas de siempre y
 día se envíe push o no, para no recalcular dos veces si el job corre más de una vez.
 
 - No hay scheduler propio corriendo dentro de este backend — hay que llamar a ese endpoint una
-  vez al día desde algo externo (un cron del hosting, una Supabase scheduled function, GitHub
-  Actions con `schedule`...). Genera `INTERNAL_JOB_SECRET` (ej. `openssl rand -hex 32`) y
-  configúralo tanto en el backend como en quien dispare el job.
+  vez al día desde algo externo. `.github/workflows/internal-jobs.yml` ya lo hace (ver "Zonas
+  precalculadas" más arriba, mismo workflow para los dos jobs). Genera `INTERNAL_JOB_SECRET`
+  (ej. `openssl rand -hex 32`) y configúralo tanto en Render como en los secrets del repo.
 - El móvil pide permiso de notificaciones y registra el token (`POST /push-tokens`) al iniciar
   sesión — falla en silencio (no hay notificaciones, pero tampoco rompe el login) si no hay
   permiso, no es un dispositivo físico, o no hay proyecto EAS configurado en `app.json`
